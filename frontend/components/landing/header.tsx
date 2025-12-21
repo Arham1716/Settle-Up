@@ -23,27 +23,22 @@ export function Header() {
       transition={{ duration: 0.5, ease: "easeOut" }}
       className="fixed top-6 left-1/2 z-50 w-[95%] max-w-6xl rounded-2xl border border-white/10 bg-black/40 backdrop-blur-md overflow-hidden"
       style={{
-        // This adds the subtle internal green shine seen in your screenshot
-        backgroundImage: `radial-gradient(circle at 50% 0%, rgba(34, 197, 94, 0.15) 0%, transparent 80%)`,
+        backgroundImage:
+          "radial-gradient(circle at 50% 0%, rgba(34, 197, 94, 0.15) 0%, transparent 80%)",
       }}
     >
-      <div className="relative flex h-14 items-center justify-between px-6"> 
-       {/* Logo Section */}
-        <Link
-          href="/"
-          className="flex items-center  group" 
-        >
+      <div className="relative flex h-14 items-center justify-between px-6">
+        {/* Logo */}
+        <Link href="/" className="flex items-center group">
           <div className="relative flex items-center justify-center">
-            {/* Ambient glow - broadened for the larger icon */}
             <div className="absolute inset-0 bg-green-500/30 blur-2xl rounded-full group-hover:bg-green-500/50 transition-all duration-500" />
-            
             <Image
               src="/logo.png"
               alt="Settle Up Logo"
-              width={56}  // Increased size
-              height={56} // Increased size
+              width={56}
+              height={56}
               className="relative h-12 w-12 object-contain transition-transform duration-300 group-hover:scale-105"
-              priority // Ensures the logo loads immediately without flashing
+              priority
             />
           </div>
           <span className="text-2xl font-bold tracking-tight text-white">
@@ -64,15 +59,21 @@ export function Header() {
           ))}
         </nav>
 
-        {/* Action Button (Optional - based on your screenshot's empty right side) */}
+        {/* Signup Button (Desktop) */}
         <div className="hidden md:flex items-center">
-             <div className="w-8 h-8" /> {/* Spacer to keep nav centered if no login button */}
+          <Button
+            asChild
+            className="rounded-full bg-green-500 px-5 text-sm font-semibold text-black hover:bg-green-400 transition-colors"
+          >
+            <Link href="/signup">Sign Up</Link>
+          </Button>
         </div>
 
-        {/* Mobile Menu Button */}
+        {/* Mobile Menu Toggle */}
         <button
           className="md:hidden text-white"
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          aria-label="Toggle menu"
         >
           {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
         </button>
@@ -96,6 +97,15 @@ export function Header() {
                 {link.label}
               </a>
             ))}
+
+            {/* Signup Button (Mobile) */}
+            <Button
+              asChild
+              className="mt-2 w-full rounded-full bg-green-500 text-black hover:bg-green-400"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              <Link href="/signup">Sign Up</Link>
+            </Button>
           </div>
         </motion.div>
       )}
