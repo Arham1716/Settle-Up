@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import AuthCard from "../../components/ui/AuthCard";
 import { Input } from "@/components/ui/input";
@@ -9,6 +10,7 @@ import Link from "next/link";
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const router = useRouter();
 
   async function handleLogin(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -34,6 +36,7 @@ export default function LoginPage() {
       } else {
         alert("Login successful");
         localStorage.setItem("token", result.access_token);
+        router.replace("/dashboard");
       }
     } catch (err) {
       setError("Login failed");
