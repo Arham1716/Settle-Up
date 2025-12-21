@@ -1,6 +1,0 @@
----
-description: 
-globs: 
-alwaysApply: true
----
-Ask me before auto applying any changes to the code. Only if i allow then apply the changes to the code. 
