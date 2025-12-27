@@ -3,17 +3,23 @@ import {
   NotFoundException,
   BadRequestException,
   ConflictException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { UpdateGroupDto } from './dto/update-group.dto';
-import { GroupRole } from '@prisma/client';
+import { GroupRole, GroupMember, GroupInvite } from '@prisma/client';
+import { generateSecureToken } from '../common/utils/token';
+import { MailService } from '../mail/mail.service';
 
 @Injectable()
 export class GroupsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private mailService: MailService,
+  ) {}
 
-  // Create a new group
+  // ---------------- Create Group ----------------
   async create(userId: string, dto: CreateGroupDto) {
     return this.prisma.group.create({
       data: {
@@ -21,87 +27,55 @@ export class GroupsService {
         description: dto.description,
         currency: dto.currency || 'USD',
         createdById: userId,
-        // Automatically add creator as ADMIN
         members: {
-          create: {
-            userId,
-            role: GroupRole.ADMIN,
-          },
+          create: { userId, role: GroupRole.ADMIN },
         },
       },
       include: {
         members: {
           where: { leftAt: null },
-          include: {
-            user: {
-              select: { id: true, name: true, email: true },
-            },
-          },
+          include: { user: { select: { id: true, name: true, email: true } } },
         },
       },
     });
   }
 
-  // Get all groups for a user
+  // ---------------- Get All Groups for User ----------------
   async findAllForUser(userId: string) {
     return this.prisma.group.findMany({
       where: {
         deletedAt: null,
-        members: {
-          some: {
-            userId,
-            leftAt: null,
-          },
-        },
+        members: { some: { userId, leftAt: null } },
       },
       include: {
         members: {
           where: { leftAt: null },
-          include: {
-            user: {
-              select: { id: true, name: true, email: true },
-            },
-          },
+          include: { user: { select: { id: true, name: true, email: true } } },
         },
-        _count: {
-          select: {
-            members: {
-              where: { leftAt: null },
-            },
-          },
-        },
+        _count: { select: { members: { where: { leftAt: null } } } },
       },
       orderBy: { updatedAt: 'desc' },
     });
   }
 
-  // Get single group by ID
+  // ---------------- Get Single Group ----------------
   async findOne(groupId: string) {
     const group = await this.prisma.group.findFirst({
       where: { id: groupId, deletedAt: null },
       include: {
         members: {
           where: { leftAt: null },
-          include: {
-            user: {
-              select: { id: true, name: true, email: true },
-            },
-          },
+          include: { user: { select: { id: true, name: true, email: true } } },
         },
-        createdBy: {
-          select: { id: true, name: true, email: true },
-        },
+        createdBy: { select: { id: true, name: true, email: true } },
       },
     });
 
-    if (!group) {
-      throw new NotFoundException('Group not found');
-    }
-
+    if (!group) throw new NotFoundException('Group not found');
     return group;
   }
 
-  // Update group metadata
+  // ---------------- Update Group ----------------
   async update(groupId: string, dto: UpdateGroupDto) {
     return this.prisma.group.update({
       where: { id: groupId },
@@ -109,17 +83,13 @@ export class GroupsService {
       include: {
         members: {
           where: { leftAt: null },
-          include: {
-            user: {
-              select: { id: true, name: true, email: true },
-            },
-          },
+          include: { user: { select: { id: true, name: true, email: true } } },
         },
       },
     });
   }
 
-  // Soft delete group
+  // ---------------- Soft Delete Group ----------------
   async remove(groupId: string) {
     return this.prisma.group.update({
       where: { id: groupId },
@@ -127,69 +97,73 @@ export class GroupsService {
     });
   }
 
-  // Add member to group
+  // ---------------- Add Member ----------------
   async addMember(groupId: string, email: string) {
-    // Find user by email
+    const normalizedEmail = email.toLowerCase().trim();
+
     const user = await this.prisma.user.findUnique({
-      where: { email: email.toLowerCase().trim() },
+      where: { email: normalizedEmail },
     });
 
-    if (!user) {
-      throw new NotFoundException('User with this email not found');
-    }
-
-    // Check if user is already a member
-    const existingMembership = await this.prisma.groupMember.findUnique({
-      where: {
-        userId_groupId: {
-          userId: user.id,
-          groupId,
-        },
-      },
-    });
-
-    if (existingMembership) {
-      if (existingMembership.leftAt === null) {
-        throw new ConflictException('User is already a member of this group');
-      }
-      // Reactivate membership if user previously left
-      return this.prisma.groupMember.update({
-        where: { id: existingMembership.id },
-        data: { leftAt: null, role: GroupRole.MEMBER },
-        include: {
-          user: {
-            select: { id: true, name: true, email: true },
-          },
-        },
+    if (user) {
+      // Existing user → in-app invite
+      const existingMembership = await this.prisma.groupMember.findUnique({
+        where: { userId_groupId: { userId: user.id, groupId } },
       });
+
+      if (existingMembership && existingMembership.leftAt === null) {
+        throw new ConflictException('User already in group');
+      }
+
+      const member = existingMembership
+        ? await this.prisma.groupMember.update({
+            where: { id: existingMembership.id },
+            data: { leftAt: null },
+          })
+        : await this.prisma.groupMember.create({
+            data: {
+              userId: user.id,
+              groupId,
+              role: GroupRole.MEMBER,
+            },
+          });
+
+      await this.prisma.groupMemberNotification.create({
+        data: { groupId, userId: user.id },
+      });
+
+      return member;
     }
 
-    return this.prisma.groupMember.create({
+    // New user → email invite
+    const token = generateSecureToken();
+
+    const invite = await this.prisma.groupInvite.create({
       data: {
-        userId: user.id,
         groupId,
-        role: GroupRole.MEMBER,
+        email: normalizedEmail,
+        token,
       },
-      include: {
-        user: {
-          select: { id: true, name: true, email: true },
-        },
-      },
+      include: { group: true },
     });
+
+    await this.mailService.sendGroupInviteEmail(
+      normalizedEmail,
+      invite.group.name,
+      token,
+    );
+
+    return invite;
   }
 
-  // Remove member from group (soft delete)
+  // ---------------- Remove Member ----------------
   async removeMember(
     groupId: string,
     userId: string,
-    requestingUserId: string) {
-    // Prevent removing yourself if you're the last admin
+    requestingUserId: string,
+  ) {
     const admins = await this.prisma.groupMember.findMany({
-      where: {
-        groupId,
-        role: GroupRole.ADMIN,
-        leftAt: null,
-      },
+      where: { groupId, role: GroupRole.ADMIN, leftAt: null },
     });
 
     if (admins.length === 1 && admins[0].userId === userId) {
@@ -199,9 +173,7 @@ export class GroupsService {
     }
 
     const membership = await this.prisma.groupMember.findUnique({
-      where: {
-        userId_groupId: { userId, groupId },
-      },
+      where: { userId_groupId: { userId, groupId } },
     });
 
     if (!membership || membership.leftAt !== null) {
@@ -214,22 +186,17 @@ export class GroupsService {
     });
   }
 
-  // Update member role
+  // ---------------- Update Member Role ----------------
   async updateMemberRole(
     groupId: string,
     userId: string,
     role: GroupRole,
-    requestingUserId: string) {
-    // Prevent demoting yourself if you're the last admin
+    requestingUserId: string,
+  ) {
     if (role === GroupRole.MEMBER) {
       const admins = await this.prisma.groupMember.findMany({
-        where: {
-          groupId,
-          role: GroupRole.ADMIN,
-          leftAt: null,
-        },
+        where: { groupId, role: GroupRole.ADMIN, leftAt: null },
       });
-
       if (admins.length === 1 && admins[0].userId === userId) {
         throw new BadRequestException(
           'Cannot demote the last admin. Promote another member first.',
@@ -238,9 +205,7 @@ export class GroupsService {
     }
 
     const membership = await this.prisma.groupMember.findUnique({
-      where: {
-        userId_groupId: { userId, groupId },
-      },
+      where: { userId_groupId: { userId, groupId } },
     });
 
     if (!membership || membership.leftAt !== null) {
@@ -250,31 +215,31 @@ export class GroupsService {
     return this.prisma.groupMember.update({
       where: { id: membership.id },
       data: { role },
-      include: {
-        user: {
-          select: { id: true, name: true, email: true },
-        },
-      },
+      include: { user: { select: { id: true, name: true, email: true } } },
     });
   }
 
-  // Get group balances (stub for now)
+  // ---------------- Get Group Balances ----------------
   async getBalances(groupId: string) {
     const members = await this.prisma.groupMember.findMany({
       where: { groupId, leftAt: null },
-      include: {
-        user: {
-          select: { id: true, name: true, email: true },
-        },
-      },
+      include: { user: { select: { id: true, name: true, email: true } } },
     });
 
-    // Return stub balances - will be implemented with Expenses module
     return members.map((member) => ({
       user: member.user,
       balance: 0,
       owes: [],
       isOwed: [],
     }));
+  }
+
+  async getGroupByInviteToken(inviteToken: string) {
+    const invite = await this.prisma.groupInvite.findUnique({
+      where: { token: inviteToken },
+      include: { group: true },
+    });
+
+    return invite?.group || null;
   }
 }

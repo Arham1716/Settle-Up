@@ -6,13 +6,15 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Optional future fields
   emailVerified Boolean @default(false)
-  provider      String? // for social login
-  providerId    String? // google/facebook id
+  provider      String?
+  providerId    String?
 
   groupsCreated    Group[]       @relation("GroupCreator")
   groupMemberships GroupMember[]
+
+  // New back-relation for notifications
+  memberNotifications GroupMemberNotification[]
 }
 
 model Group {
@@ -22,18 +24,23 @@ model Group {
   currency    String    @default("USD")
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
-  deletedAt   DateTime? // Soft delete
+  deletedAt   DateTime?
 
   members     GroupMember[]
   createdById String
   createdBy   User          @relation("GroupCreator", fields: [createdById], references: [id])
+
+  // New back-relations for invites and notifications
+  invites             GroupInvite[]
+  memberNotifications GroupMemberNotification[]
 }
 
 model GroupMember {
-  id       String    @id @default(uuid())
-  role     GroupRole @default(MEMBER)
-  joinedAt DateTime  @default(now())
-  leftAt   DateTime? // Soft delete for membership
+  id          String    @id @default(uuid())
+  role        GroupRole @default(MEMBER)
+  joinedAt    DateTime  @default(now())
+  leftAt      DateTime? // Soft delete for membership
+  displayName String? // Name shown in the group
 
   userId  String
   user    User   @relation(fields: [userId], references: [id])
@@ -46,6 +53,44 @@ model GroupMember {
 enum GroupRole {
   ADMIN
   MEMBER
+}
+
+// For new members invite via email
+
+model GroupInvite {
+  id        String       @id @default(uuid())
+  groupId   String
+  email     String
+  token     String       @unique
+  status    InviteStatus @default(PENDING)
+  createdAt DateTime     @default(now())
+
+  group Group @relation(fields: [groupId], references: [id])
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
+// For current users group invite via the app notification
+
+model GroupMemberNotification {
+  id        String             @id @default(uuid())
+  groupId   String
+  userId    String
+  status    NotificationStatus @default(PENDING)
+  createdAt DateTime           @default(now())
+
+  group Group @relation(fields: [groupId], references: [id])
+  user  User  @relation(fields: [userId], references: [id])
+}
+
+enum NotificationStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
 }
 
 generator client {

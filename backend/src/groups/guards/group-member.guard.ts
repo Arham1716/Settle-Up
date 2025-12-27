@@ -6,13 +6,20 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import type { Request } from 'express';
+
+interface AuthenticatedRequest extends Request {
+  user?: { id: string }; // From JWT auth
+  groupMembership?: any; // You can type this better if needed
+  group?: any; // Optional, same here
+}
 
 @Injectable()
 export class GroupMemberGuard implements CanActivate {
   constructor(private prisma: PrismaService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context.switchToHttp().getRequest();
+    const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
     const userId = request.user?.id;
     const groupId = request.params.id;
 
