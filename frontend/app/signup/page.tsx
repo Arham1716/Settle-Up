@@ -31,8 +31,10 @@ export default function SignupPage() {
     const password = (formData.get("password") as string).trim();
 
     try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+      
       // ✅ Signup request with credentials
-      const res = await fetch("http://localhost:3000/auth/signup", {
+      const res = await fetch(`${apiUrl}/auth/signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include", // Important for cookie handling
@@ -47,7 +49,7 @@ export default function SignupPage() {
       }
 
       // Auto-login after signup
-      const loginRes = await fetch("http://localhost:3000/auth/login", {
+      const loginRes = await fetch(`${apiUrl}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -61,7 +63,14 @@ export default function SignupPage() {
       }
 
       const inviteToken = new URLSearchParams(window.location.search).get("inviteToken") ?? undefined;
-      redirectAfterLogin(inviteToken);
+      if (inviteToken) {
+        // Give time for cookie to be available before redirect
+        setTimeout(() => {
+          router.replace(`/invite/${inviteToken}`);
+        }, 100);
+      } else {
+        router.replace("/dashboard");
+      }
     } catch (err) {
       console.error(err);
       setError("Signup failed");

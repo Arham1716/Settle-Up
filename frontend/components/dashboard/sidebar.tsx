@@ -2,6 +2,8 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import {
   Users,
   List,
@@ -9,6 +11,7 @@ import {
   BarChart3,
   Settings,
 } from "lucide-react"
+import { GlossyButton } from "@/components/ui/glossy-button" // make sure this path is correct
 
 const navItems = [
   { label: "Groups", href: "/dashboard/groups", icon: Users },
@@ -20,16 +23,45 @@ const navItems = [
 
 export function DashboardSidebar() {
   const pathname = usePathname()
+  const router = useRouter()
+  const [user, setUser] = useState<{ name?: string; email: string } | null>(null)
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"
+        const res = await fetch(`${apiUrl}/auth/me`, { credentials: "include" })
+        if (!res.ok) return setUser(null)
+        const data = await res.json()
+        setUser(data)
+      } catch (err) {
+        console.error("Failed to fetch user", err)
+        setUser(null)
+      }
+    }
+    fetchUser()
+  }, [])
+
+  const handleLogout = async () => {
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"
+      await fetch(`${apiUrl}/auth/logout`, { method: "POST", credentials: "include" })
+      // Redirect to login after logout
+      router.replace("/login")
+    } catch (err) {
+      console.error("Logout failed", err)
+    }
+  }
 
   return (
-    <aside className="flex h-screen w-64 flex-col border-r border-white/10 bg-black/60 backdrop-blur-md">
+    <aside className="flex h-screen w-64 flex-col border-r border-white/10 bg-black/60 backdrop-blur-md px-4 py-4">
       {/* Logo */}
-      <div className="flex h-16 items-center px-6 text-xl font-bold text-white">
+      <div className="flex h-16 items-center text-xl font-bold text-white">
         Settle Up
       </div>
 
       {/* Navigation */}
-      <nav className="flex flex-1 flex-col gap-1 px-3 py-4">
+      <nav className="flex flex-1 flex-col gap-1 mt-4">
         {navItems.map((item) => {
           const active = pathname.startsWith(item.href)
 
@@ -51,6 +83,18 @@ export function DashboardSidebar() {
           )
         })}
       </nav>
+
+      {/* Current user and logout button */}
+      {user && (
+  <div className="mt-auto border-t border-white/10 pt-4 px-8 flex flex-col items-center gap-3">
+    <div className="text-md text-white/80 text-center pb-2">
+      {user.name || user.email}
+    </div>
+    <GlossyButton onClick={handleLogout} className="w-full">
+      Log out
+    </GlossyButton>
+  </div>
+)}
     </aside>
   )
 }

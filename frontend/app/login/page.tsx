@@ -33,7 +33,8 @@ export default function LoginPage() {
     const password = (formData.get("password") as string).trim();
 
     try {
-      const response = await fetch("http://localhost:3000/auth/login", {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+      const response = await fetch(`${apiUrl}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include", // Important: send/receive cookies
@@ -43,14 +44,23 @@ export default function LoginPage() {
       const result = await response.json();
       console.log("LOGIN RESPONSE STATUS:", response.status);
       console.log("LOGIN RESPONSE BODY:", result);
+      console.log("LOGIN RESPONSE HEADERS:", response.headers.get("set-cookie"));
 
       if (!response.ok) {
         setError(result.message || "Login failed");
         return;
       }
 
+      // Wait a bit longer to ensure cookie is set before redirect
       const inviteToken = new URLSearchParams(window.location.search).get("inviteToken") ?? undefined;
-      redirectAfterLogin(inviteToken);
+      if (inviteToken) {
+        // Give more time for cookie to be available
+        setTimeout(() => {
+          router.replace(`/invite/${inviteToken}`);
+        }, 100);
+      } else {
+        router.replace("/dashboard");
+      }
     } catch (err) {
       console.error(err);
       setError("Login failed");

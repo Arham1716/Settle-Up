@@ -33,9 +33,10 @@ export class AuthController {
     // 🔑 Set token in HTTP-only cookie
     res.cookie('jwt', token, {
       httpOnly: true,
-      sameSite: 'lax', // use 'none' + secure:true in production HTTPS
-      secure: false, // true in production HTTPS
+      sameSite: 'lax', // 'lax' works for same-domain different ports
+      secure: false, // false for localhost, true in production HTTPS
       path: '/',
+      domain: undefined, // undefined means current domain (localhost)
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 

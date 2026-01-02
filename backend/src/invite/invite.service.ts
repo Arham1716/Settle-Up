@@ -52,7 +52,8 @@ export class InviteService {
 
     if (!invite) throw new Error('Invalid invite token');
     if (invite.status !== 'PENDING') throw new Error('Invite already used');
-    if (invite.expiresAt && invite.expiresAt < new Date()) throw new Error('Invite expired');
+    if (invite.expiresAt && invite.expiresAt < new Date())
+      throw new Error('Invite expired');
 
     if (!displayName || !displayName.trim()) {
       throw new BadRequestException('Display name is required');
