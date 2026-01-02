@@ -12,35 +12,48 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const router = useRouter();
 
+  const redirectAfterLogin = (inviteToken?: string) => {
+    if (inviteToken) {
+      // Slight delay to ensure cookie is usable on invite page
+      setTimeout(() => {
+        router.replace(`/invite/${inviteToken}`);
+      }, 50);
+    } else {
+      router.replace("/dashboard");
+    }
+  };
+
   async function handleLogin(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
     setLoading(true);
 
     const formData = new FormData(e.currentTarget);
+    const email = (formData.get("email") as string).trim();
+    const password = (formData.get("password") as string).trim();
 
     try {
       const response = await fetch("http://localhost:3000/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: (formData.get("email") as string).trim(),
-          password: formData.get("password") as string,
-        }),
+        credentials: "include", // Important: send/receive cookies
+        body: JSON.stringify({ email, password }),
       });
 
       const result = await response.json();
+      console.log("LOGIN RESPONSE STATUS:", response.status);
+      console.log("LOGIN RESPONSE BODY:", result);
 
       if (!response.ok) {
         setError(result.message || "Login failed");
-      } else {
-        alert("Login successful");
-        localStorage.setItem("token", result.access_token);
-        router.replace("/dashboard");
+        return;
       }
+
+      const inviteToken = new URLSearchParams(window.location.search).get("inviteToken") ?? undefined;
+      redirectAfterLogin(inviteToken);
     } catch (err) {
-      setError("Login failed");
       console.error(err);
+      setError("Login failed");
     } finally {
       setLoading(false);
     }
@@ -54,35 +67,19 @@ export default function LoginPage() {
             <p className="mb-4 text-center text-sm text-destructive">{error}</p>
           )}
           <form onSubmit={handleLogin} className="space-y-4">
-            <div className="space-y-2">
-              <Input
-                name="email"
-                type="email"
-                placeholder="Email"
-                required
-                className="w-full"
-              />
-            </div>
-            <div className="space-y-2">
-              <Input
-                name="password"
-                type="password"
-                placeholder="Password"
-                required
-                className="w-full"
-              />
-            </div>
-            <Button
-              type="submit"
-              disabled={loading}
-              className="w-full"
-              size="lg"
-            >
+            <Input name="email" type="email" placeholder="Email" required />
+            <Input name="password" type="password" placeholder="Password" required />
+
+            <Button type="submit" disabled={loading} className="w-full" size="lg">
               {loading ? "Logging in..." : "Log In"}
             </Button>
+
             <p className="mt-4 text-center text-sm text-muted-foreground">
-              Don't have an account?{" "}
-              <Link href="/signup" className="text-primary hover:underline">
+              Do not have an account?{" "}
+              <Link
+                href={`/signup${window.location.search}`}
+                className="text-primary hover:underline"
+              >
                 Sign up
               </Link>
             </p>

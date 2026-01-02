@@ -33,34 +33,26 @@ export class AuthService {
     return { message: 'Signup successful', user };
   }
 
-  // LOGIN
+  // LOGIN - returns JWT only, cookie handled in controller
   async login(email: string, password: string) {
     const normalizedEmail = email.toLowerCase().trim();
     const user = await this.userService.getUserByEmail(normalizedEmail);
-    console.log('User fetched from DB:', user);
 
-    if (!user) {
-      throw new UnauthorizedException('Invalid email or password');
-    }
-
-    // Debug: Log password comparison details
-    console.log('Comparing password:', {
-      passwordLength: password.length,
-      hashedPasswordLength: user.password?.length,
-    });
+    if (!user) throw new UnauthorizedException('Invalid email or password');
 
     const match = await bcrypt.compare(password, user.password);
-    console.log('Password match result:', match);
-
-    if (!match) {
-      throw new UnauthorizedException('Invalid email or password');
-    }
+    if (!match) throw new UnauthorizedException('Invalid email or password');
 
     const token = await this.jwtService.signAsync({
       sub: user.id,
       email: user.email,
     });
 
-    return { access_token: token };
+    return token; // return JWT, do not set cookie here
+  }
+
+  // GET ME
+  async me(userId: string) {
+    return this.userService.getUserById(userId); // make sure this method exists
   }
 }

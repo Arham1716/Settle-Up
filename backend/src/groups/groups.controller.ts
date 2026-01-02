@@ -8,7 +8,6 @@ import {
   Param,
   UseGuards,
   Request,
-  NotFoundException,
 } from '@nestjs/common';
 import { GroupsService } from './groups.service';
 import { CreateGroupDto } from './dto/create-group.dto';
@@ -91,13 +90,5 @@ export class GroupsController {
   @UseGuards(GroupMemberGuard)
   getBalances(@Param('id') id: string) {
     return this.groupsService.getBalances(id);
-  }
-
-  @Get('invite/:inviteToken')
-  async acceptInvite(@Param('inviteToken') inviteToken: string) {
-    const group = await this.groupsService.getGroupByInviteToken(inviteToken);
-    if (!group) throw new NotFoundException('Invalid invite link');
-
-    return { groupId: group.id };
   }
 }

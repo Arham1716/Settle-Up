@@ -3,7 +3,6 @@ import {
   NotFoundException,
   BadRequestException,
   ConflictException,
-  InternalServerErrorException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateGroupDto } from './dto/create-group.dto';
@@ -42,37 +41,55 @@ export class GroupsService {
 
   // ---------------- Get All Groups for User ----------------
   async findAllForUser(userId: string) {
-    return this.prisma.group.findMany({
+    const groups = await this.prisma.group.findMany({
       where: {
-        deletedAt: null,
-        members: { some: { userId, leftAt: null } },
-      },
-      include: {
         members: {
-          where: { leftAt: null },
-          include: { user: { select: { id: true, name: true, email: true } } },
+          some: {
+            userId,
+          },
         },
-        _count: { select: { members: { where: { leftAt: null } } } },
       },
-      orderBy: { updatedAt: 'desc' },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+      },
     });
+
+    return groups;
   }
 
   // ---------------- Get Single Group ----------------
   async findOne(groupId: string) {
-    const group = await this.prisma.group.findFirst({
-      where: { id: groupId, deletedAt: null },
+    const group = await this.prisma.group.findUnique({
+      where: { id: groupId },
       include: {
         members: {
-          where: { leftAt: null },
-          include: { user: { select: { id: true, name: true, email: true } } },
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+          },
         },
-        createdBy: { select: { id: true, name: true, email: true } },
       },
     });
 
-    if (!group) throw new NotFoundException('Group not found');
-    return group;
+    if (!group) return null;
+
+    return {
+      id: group.id,
+      name: group.name,
+      description: group.description,
+      members: group.members.map((m) => ({
+        id: m.user.id,
+        name: m.user.name ?? m.displayName,
+        email: m.user.email,
+      })),
+    };
   }
 
   // ---------------- Update Group ----------------

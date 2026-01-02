@@ -64,6 +64,7 @@ model GroupInvite {
   token     String       @unique
   status    InviteStatus @default(PENDING)
   createdAt DateTime     @default(now())
+  expiresAt DateTime     @default(dbgenerated("now() + interval '7 days'"))
 
   group Group @relation(fields: [groupId], references: [id])
 }

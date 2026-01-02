@@ -103,9 +103,16 @@ export default function GroupPage() {
   }
 
   return (
-    <div className="relative min-h-screen flex">
-      <main className="relative flex-1 overflow-hidden">
-        <section className="relative z-10 pt-16 px-4 max-w-4xl mx-auto">
+    <section className="relative min-h-screen overflow-hidden pt-6">
+      {/* Primary green radial gradient */}
+      <div className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-[radial-gradient(ellipse_at_center,_rgba(34,197,94,0.3)_0%,_rgba(34,197,94,0.1)_30%,_transparent_70%)]" />
+
+      {/* Secondary subtle gradient */}
+      <div className="pointer-events-none absolute top-0 right-0 w-[600px] h-[600px] bg-[radial-gradient(ellipse_at_top_right,_rgba(34,197,94,0.15)_0%,_transparent_60%)]" />
+
+      {/* Content */}
+      <main className="relative z-10 flex-1 overflow-hidden">
+        <section className="pt-16 px-4 max-w-4xl mx-auto">
 
           <SectionHeader className="mb-6 text-center">
             <h1>{group.name}</h1>
@@ -129,12 +136,11 @@ export default function GroupPage() {
           </div>
 
           {/* Add Member Button */}
-          <GlossyButton
-            onClick={() => setShowAddMember(true)}
-            className="inline-flex items-center"
-          >
-            <UserPlus className="mr-2 h-4 w-4" />
-            Add Member
+          <GlossyButton onClick={() => setShowAddMember(true)}>
+            <span className="inline-flex items-center gap-2">
+              <UserPlus className="h-4 w-4" />
+              Add Member
+            </span>
           </GlossyButton>
         </section>
 
@@ -172,6 +178,6 @@ export default function GroupPage() {
           </div>
         )}
       </main>
-    </div>
+    </section>
   );
 }

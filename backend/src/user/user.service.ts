@@ -17,6 +17,9 @@ export class UserService {
       },
     });
   }
+  async getUserById(userId: string) {
+    return this.prisma.user.findUnique({ where: { id: userId } });
+  }
 
   // Create a new user
   async createUser(data: { email: string; password: string }) {
