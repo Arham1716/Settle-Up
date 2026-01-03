@@ -34,7 +34,7 @@ export class MailService implements OnModuleInit {
         service: 'gmail', // recommended over host/port for OAuth
         auth: {
           type: 'OAuth2',
-          user: process.env.GMAIL_USER!, // 🔴 MUST MATCH TOKEN OWNER
+          user: process.env.GMAIL_USER!, // MUST MATCH TOKEN OWNER
           clientId: process.env.GMAIL_CLIENT_ID!,
           clientSecret: process.env.GMAIL_CLIENT_SECRET!,
           refreshToken: process.env.GMAIL_REFRESH_TOKEN!,

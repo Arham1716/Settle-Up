@@ -32,22 +32,20 @@ export default function GroupPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const token = typeof window !== "undefined"
-    ? localStorage.getItem("token")
-    : null;
-
+  // ---------------- Fetch Group ----------------
   const fetchGroup = async () => {
     try {
       const res = await fetch(`http://localhost:3000/groups/${groupId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        credentials: "include", // 🔑 REQUIRED for cookie-based auth
       });
 
-      if (!res.ok) throw new Error("Failed to fetch group");
+      if (res.status === 401) throw new Error("Unauthorized");
+      if (!res.ok) throw new Error("Group not found");
+
       const data = await res.json();
       setGroup(data);
-    } catch {
+    } catch (err) {
+      console.error(err);
       setGroup(null);
     } finally {
       setLoading(false);
@@ -70,16 +68,17 @@ export default function GroupPage() {
         `http://localhost:3000/groups/${groupId}/members`,
         {
           method: "POST",
+          credentials: "include", // 🔑 REQUIRED
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({ email }),
         }
       );
 
+      const data = await res.json();
+
       if (!res.ok) {
-        const data = await res.json();
         throw new Error(data.message || "Failed to add member");
       }
 
@@ -104,16 +103,12 @@ export default function GroupPage() {
 
   return (
     <section className="relative min-h-screen overflow-hidden pt-6">
-      {/* Primary green radial gradient */}
+      {/* Background gradients */}
       <div className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-[radial-gradient(ellipse_at_center,_rgba(34,197,94,0.3)_0%,_rgba(34,197,94,0.1)_30%,_transparent_70%)]" />
-
-      {/* Secondary subtle gradient */}
       <div className="pointer-events-none absolute top-0 right-0 w-[600px] h-[600px] bg-[radial-gradient(ellipse_at_top_right,_rgba(34,197,94,0.15)_0%,_transparent_60%)]" />
 
-      {/* Content */}
       <main className="relative z-10 flex-1 overflow-hidden">
         <section className="pt-16 px-4 max-w-4xl mx-auto">
-
           <SectionHeader className="mb-6 text-center">
             <h1>{group.name}</h1>
             {group.description && <p>{group.description}</p>}

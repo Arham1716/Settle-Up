@@ -45,21 +45,34 @@ export class InviteService {
    * Accept invite and add user to group
    */
   async acceptInvite(token: string, userId: string, displayName: string) {
+    if (!userId) {
+      throw new BadRequestException('User must be logged in to accept invite');
+    }
+
+    if (!displayName?.trim()) {
+      throw new BadRequestException('Display name is required');
+    }
+
     const invite = await this.prisma.groupInvite.findUnique({
       where: { token },
       include: { group: true },
     });
 
-    if (!invite) throw new Error('Invalid invite token');
-    if (invite.status !== 'PENDING') throw new Error('Invite already used');
-    if (invite.expiresAt && invite.expiresAt < new Date())
-      throw new Error('Invite expired');
+    if (!invite) throw new NotFoundException('Invalid invite token');
 
-    if (!displayName || !displayName.trim()) {
-      throw new BadRequestException('Display name is required');
+    if (invite.status !== InviteStatus.PENDING)
+      throw new BadRequestException('Invite already used');
+
+    if (invite.expiresAt && invite.expiresAt < new Date())
+      throw new BadRequestException('Invite has expired');
+
+    // ✅ Check user exists before adding to group
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      throw new BadRequestException('Authenticated user not found');
     }
 
-    // Add the user to the group
+    // Check if user is already a member
     const existing = await this.prisma.groupMember.findUnique({
       where: { userId_groupId: { userId, groupId: invite.groupId } },
     });
@@ -70,14 +83,15 @@ export class InviteService {
           userId,
           groupId: invite.groupId,
           role: 'MEMBER',
-          displayName, // <-- set the name from input
+          displayName,
         },
       });
     }
 
+    // Mark invite as accepted
     await this.prisma.groupInvite.update({
       where: { id: invite.id },
-      data: { status: 'ACCEPTED' },
+      data: { status: InviteStatus.ACCEPTED },
     });
 
     return { groupId: invite.groupId };
