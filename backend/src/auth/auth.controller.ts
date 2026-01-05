@@ -27,20 +27,20 @@ export class AuthController {
     @Body() body: SignupDto,
     @Res({ passthrough: true }) res: Response,
   ) {
-    // 🔑 Get JWT from service
-    const token = await this.auth.login(body.email, body.password);
+    try {
+      const token = await this.auth.login(body.email, body.password);
 
-    // 🔑 Set token in HTTP-only cookie
-    res.cookie('jwt', token, {
-      httpOnly: true,
-      sameSite: 'lax', // 'lax' works for same-domain different ports
-      secure: false, // false for localhost, true in production HTTPS
-      path: '/',
-      domain: undefined, // undefined means current domain (localhost)
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    });
+      res.cookie('jwt', token, {
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: false,
+        path: '/',
+      });
 
-    return { success: true };
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, message: err.message };
+    }
   }
 
   @UseGuards(JwtAuthGuard)

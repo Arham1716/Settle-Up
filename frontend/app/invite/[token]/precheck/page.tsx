@@ -6,15 +6,12 @@ import { useRouter, useParams } from 'next/navigation';
 export default function InvitePrecheckPage() {
   const router = useRouter();
   const params = useParams();
-  const token = params?.token as string;
+  const token = params?.token as string | undefined;
+
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
   useEffect(() => {
-    if (!token) {
-      router.replace('/'); // fallback
-      return;
-    }
-
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+    let cancelled = false;
 
     const checkAuth = async () => {
       try {
@@ -22,26 +19,29 @@ export default function InvitePrecheckPage() {
           credentials: 'include',
         });
 
-        if (!res.ok || res.status === 401) {
-          // Not logged in → redirect to login with inviteToken
+        if (!res.ok) {
           router.replace(`/login?inviteToken=${token}`);
           return;
         }
 
-        // User is logged in → go to accept page
-        router.replace(`/invite/${token}/accept`);
-      } catch (err) {
-        console.error(err);
+        if (!cancelled) {
+          router.replace(`/invite/${token}/accept`);
+        }
+      } catch {
         router.replace(`/login?inviteToken=${token}`);
       }
     };
 
     checkAuth();
-  }, [token, router]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token, router, apiUrl]);
 
   return (
     <p className="text-center mt-20 text-white/60">
-      Checking invite link...
+      Preparing invite…
     </p>
   );
 }

@@ -10,6 +10,7 @@ type Member = {
   id: string;
   name: string;
   email: string;
+  role: string;
 };
 
 type Group = {
@@ -17,6 +18,7 @@ type Group = {
   name: string;
   description?: string;
   members: Member[];
+  currentUserRole: string | null;
 };
 
 export default function GroupPage() {
@@ -31,6 +33,8 @@ export default function GroupPage() {
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const isAdmin = group?.currentUserRole === "ADMIN";
 
   // ---------------- Fetch Group ----------------
   const fetchGroup = async () => {
@@ -68,7 +72,7 @@ export default function GroupPage() {
         `http://localhost:3000/groups/${groupId}/members`,
         {
           method: "POST",
-          credentials: "include", // 🔑 REQUIRED
+          credentials: "include", //  REQUIRED
           headers: {
             "Content-Type": "application/json",
           },
@@ -93,13 +97,8 @@ export default function GroupPage() {
     }
   };
 
-  if (loading) {
-    return <p className="text-white/60">Loading group...</p>;
-  }
-
-  if (!group) {
-    return <p className="text-white/60">Group not found.</p>;
-  }
+  if (loading) return <p className="text-white/60">Loading group...</p>;
+  if (!group) return <p className="text-white/60">Group not found.</p>;
 
   return (
     <section className="relative min-h-screen overflow-hidden pt-6">
@@ -121,26 +120,55 @@ export default function GroupPage() {
               {group.members.map((member) => (
                 <li
                   key={member.id}
-                  className="rounded-md bg-black/40 p-3 flex justify-between text-white"
+                  className="rounded-md bg-black/40 p-3 flex justify-between items-center text-white"
                 >
-                  <span>{member.name}</span>
-                  <span className="text-sm text-white/60">{member.email}</span>
+                  <span>
+                    {member.name}{" "}
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <span className="text-sm text-white/60">{member.email}</span>
+
+                    {/* Remove button only for admin */}
+                    {isAdmin && member.role !== "ADMIN" && (
+                      <button
+                        onClick={async () => {
+                          try {
+                            await fetch(
+                              `http://localhost:3000/groups/${groupId}/members/${member.id}`,
+                              {
+                                method: "DELETE",
+                                credentials: "include",
+                              }
+                            );
+                            await fetchGroup();
+                          } catch (err) {
+                            console.error(err);
+                          }
+                        }}
+                        className="text-red-500 hover:text-red-400"
+                      >
+                        
+                      </button>
+                    )}
+                  </span>
                 </li>
               ))}
             </ul>
           </div>
 
-          {/* Add Member Button */}
-          <GlossyButton onClick={() => setShowAddMember(true)}>
-            <span className="inline-flex items-center gap-2">
-              <UserPlus className="h-4 w-4" />
-              Add Member
-            </span>
-          </GlossyButton>
+          {/* Add Member Button (only for admin) */}
+          {isAdmin && (
+            <GlossyButton onClick={() => setShowAddMember(true)}>
+              <span className="inline-flex items-center gap-2">
+                <UserPlus className="h-4 w-4" />
+                Add Member
+              </span>
+            </GlossyButton>
+          )}
         </section>
 
         {/* ---------------- Add Member Modal ---------------- */}
-        {showAddMember && (
+        {showAddMember && isAdmin && (
           <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center">
             <div className="bg-zinc-900 rounded-lg p-6 w-full max-w-md text-white">
               <div className="flex justify-between items-center mb-4">
@@ -158,9 +186,7 @@ export default function GroupPage() {
                 className="w-full rounded-md bg-black/40 px-3 py-2 text-white outline-none mb-3"
               />
 
-              {error && (
-                <p className="text-sm text-red-400 mb-2">{error}</p>
-              )}
+              {error && <p className="text-sm text-red-400 mb-2">{error}</p>}
 
               <GlossyButton
                 onClick={handleAddMember}

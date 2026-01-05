@@ -42,6 +42,15 @@ export default function LoginPage() {
         setError(result.message || 'Login failed');
         return;
       }
+      // Confirm auth before redirect
+      const meRes = await fetch(`${apiUrl}/auth/me`, {
+        credentials: 'include',
+      });
+
+      if (!meRes.ok) {
+        setError('Login succeeded but session was not established');
+        return;
+      }
 
       if (inviteToken) {
         router.replace(`/invite/${inviteToken}/precheck`);

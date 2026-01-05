@@ -36,8 +36,8 @@ export class GroupsController {
 
   @Get(':id')
   //@UseGuards(GroupMemberGuard)
-  findOne(@Param('id') id: string) {
-    return this.groupsService.findOne(id);
+  findOne(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
+    return this.groupsService.findOne(id, req.user.id);
   }
 
   @Patch(':id')

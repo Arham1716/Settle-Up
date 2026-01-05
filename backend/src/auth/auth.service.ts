@@ -38,17 +38,20 @@ export class AuthService {
     const normalizedEmail = email.toLowerCase().trim();
     const user = await this.userService.getUserByEmail(normalizedEmail);
 
-    if (!user) throw new UnauthorizedException('Invalid email or password');
+    if (!user) {
+      throw new BadRequestException('Email not registered');
+    }
+
+    if (!user.password) {
+      throw new BadRequestException(
+        'Your account is not fully set up. Please set a password or signup again.'
+      );
+    }
 
     const match = await bcrypt.compare(password, user.password);
-    if (!match) throw new UnauthorizedException('Invalid email or password');
+    if (!match) throw new BadRequestException('Incorrect password');
 
-    const token = await this.jwtService.signAsync({
-      sub: user.id,
-      email: user.email,
-    });
-
-    return token; // return JWT, do not set cookie here
+    return this.jwtService.signAsync({ sub: user.id, email: user.email });
   }
 
   // GET ME

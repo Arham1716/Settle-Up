@@ -60,7 +60,7 @@ export class GroupsService {
   }
 
   // ---------------- Get Single Group ----------------
-  async findOne(groupId: string) {
+  async findOne(groupId: string, currentUserId: string) {
     const group = await this.prisma.group.findUnique({
       where: { id: groupId },
       include: {
@@ -80,14 +80,20 @@ export class GroupsService {
 
     if (!group) return null;
 
+    // Get current user's role in this group
+    const currentMembership = group.members.find(m => m.userId === currentUserId);
+    const currentUserRole = currentMembership?.role || null;
+
     return {
       id: group.id,
       name: group.name,
       description: group.description,
+      currentUserRole, // <-- add this
       members: group.members.map((m) => ({
         id: m.user.id,
         name: m.user.name ?? m.displayName,
         email: m.user.email,
+        role: m.role,
       })),
     };
   }
