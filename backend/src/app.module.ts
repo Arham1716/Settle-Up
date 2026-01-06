@@ -7,6 +7,7 @@ import { GroupsModule } from './groups/groups.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { MailModule } from './mail/mail.module';
 import { InviteModule } from './invite/invite.module';
+import { ExpensesModule } from './expenses/expenses.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { InviteModule } from './invite/invite.module';
     PrismaModule,
     MailModule,
     InviteModule,
+    ExpensesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
