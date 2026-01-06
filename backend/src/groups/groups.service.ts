@@ -27,7 +27,11 @@ export class GroupsService {
         currency: dto.currency || 'USD',
         createdById: userId,
         members: {
-          create: { userId, role: GroupRole.ADMIN },
+          create: {
+            userId,
+            role: GroupRole.ADMIN,
+            displayName: dto.displayName,
+          },
         },
       },
       include: {
@@ -46,8 +50,10 @@ export class GroupsService {
         members: {
           some: {
             userId,
+            leftAt: null, // Only include active memberships
           },
         },
+        deletedAt: null, // Also exclude deleted groups
       },
       select: {
         id: true,

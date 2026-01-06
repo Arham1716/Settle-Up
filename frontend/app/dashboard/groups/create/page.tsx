@@ -29,6 +29,7 @@ export default function CreateGroupPage() {
         body: JSON.stringify({
           name: formData.get("name"),
           description: formData.get("description"),
+          displayName: formData.get("displayName"),
         }),
       });
 
@@ -69,6 +70,11 @@ export default function CreateGroupPage() {
             <Input
               name="description"
               placeholder="Description (optional)"
+            />
+            <Input
+              name="displayName"
+              placeholder="Your name in this group"
+              required
             />
             <Button type="submit" disabled={loading}>
               {loading ? "Creating..." : "Create Group"}

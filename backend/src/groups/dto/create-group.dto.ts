@@ -15,4 +15,9 @@ export class CreateGroupDto {
   @IsOptional()
   @MaxLength(3)
   currency?: string; // Defaults to USD
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(100)
+  displayName: string; // Admin's display name in the group
 }
