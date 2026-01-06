@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { GlossyButton } from "@/components/ui/glossy-button";
 import { SectionHeader } from "@/components/ui/section-header";
 import { UserPlus, X } from "lucide-react";
@@ -23,10 +23,16 @@ type Group = {
 
 export default function GroupPage() {
   const params = useParams();
+  const router = useRouter();
   const groupId = Array.isArray(params.id) ? params.id[0] : params.id;
 
   const [group, setGroup] = useState<Group | null>(null);
   const [loading, setLoading] = useState(true);
+  const [balance, setBalance] = useState<{
+    totalBalance: number;
+    paidBy: Array<{ user: { id: string; name: string }; total: number }>;
+    currency: string;
+  } | null>(null);
 
   // Add member modal
   const [showAddMember, setShowAddMember] = useState(false);
@@ -58,8 +64,30 @@ export default function GroupPage() {
     }
   };
 
+  // ---------------- Fetch Balance ----------------
+  const fetchBalance = async () => {
+    try {
+      const res = await fetch(
+        `http://localhost:3000/groups/${groupId}/balance`,
+        {
+          credentials: "include",
+        }
+      );
+
+      if (!res.ok) throw new Error("Failed to load balance");
+
+      const data = await res.json();
+      setBalance(data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   useEffect(() => {
-    if (groupId) fetchGroup();
+    if (groupId) {
+      fetchGroup();
+      fetchBalance();
+    }
   }, [groupId]);
 
   // ---------------- Add Member ----------------
@@ -168,13 +196,35 @@ export default function GroupPage() {
 
           {/* Add Member Button */}
           {isAdmin && (
-            <GlossyButton onClick={() => setShowAddMember(true)}>
+            <GlossyButton onClick={() => setShowAddMember(true)} className="mb-6">
               <span className="inline-flex items-center gap-2">
                 <UserPlus className="h-4 w-4" />
                 Add Member
               </span>
             </GlossyButton>
           )}
+
+          {/* Balance Section */}
+          <div className="mt-8 space-y-3">
+            {balance && balance.paidBy.length > 0 && (
+              <div className="space-y-2 mb-4">
+                {balance.paidBy.map((item, index) => (
+                  <p key={index} className="text-white/80 text-sm">
+                    Paid by: {item.user.name} ({balance.currency}
+                    {item.total.toFixed(2)})
+                  </p>
+                ))}
+              </div>
+            )}
+
+            <GlossyButton
+              onClick={() => router.push(`/dashboard/expenses?groupId=${groupId}`)}
+              className="w-full"
+            >
+              Total Balance: {balance?.currency || "$"}
+              {balance?.totalBalance.toFixed(2) || "0.00"}
+            </GlossyButton>
+          </div>
         </section>
 
         {/* Add Member Modal */}
