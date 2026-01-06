@@ -72,12 +72,13 @@ export class InviteService {
       throw new BadRequestException('Authenticated user not found');
     }
 
-    // Check if user is already a member
+    // Check if user is already a member (including previously removed)
     const existing = await this.prisma.groupMember.findUnique({
       where: { userId_groupId: { userId, groupId: invite.groupId } },
     });
 
     if (!existing) {
+      // Create new membership
       await this.prisma.groupMember.create({
         data: {
           userId,
@@ -86,7 +87,17 @@ export class InviteService {
           displayName,
         },
       });
+    } else if (existing.leftAt !== null) {
+      // Reactivate previously removed member
+      await this.prisma.groupMember.update({
+        where: { id: existing.id },
+        data: {
+          leftAt: null,
+          displayName,
+        },
+      });
     }
+    // If existing and leftAt is null, user is already an active member - no action needed
 
     // Mark invite as accepted
     await this.prisma.groupInvite.update({

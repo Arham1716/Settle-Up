@@ -7,7 +7,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { UpdateGroupDto } from './dto/update-group.dto';
-import { GroupRole, GroupMember, GroupInvite } from '@prisma/client';
+import { GroupRole, GroupMember, GroupInvite, NotificationStatus } from '@prisma/client';
 import { generateSecureToken } from '../common/utils/token';
 import { MailService } from '../mail/mail.service';
 
@@ -80,21 +80,28 @@ export class GroupsService {
 
     if (!group) return null;
 
-    // Get current user's role in this group
-    const currentMembership = group.members.find(m => m.userId === currentUserId);
+    // Map members and filter active members
+    const activeMembers = group.members
+      .filter((m) => m.leftAt === null)
+      .map((m) => ({
+        id: m.user.id,
+        name: m.displayName || m.user.name || 'No Name',
+        email: m.user.email,
+        role: m.role,
+      }));
+
+    // Get current user's role (even if they were removed, fallback to null)
+    const currentMembership = group.members.find(
+      (m) => m.userId === currentUserId && m.leftAt === null
+    );
     const currentUserRole = currentMembership?.role || null;
 
     return {
       id: group.id,
       name: group.name,
       description: group.description,
-      currentUserRole, // <-- add this
-      members: group.members.map((m) => ({
-        id: m.user.id,
-        name: m.user.name ?? m.displayName,
-        email: m.user.email,
-        role: m.role,
-      })),
+      currentUserRole,
+      members: activeMembers,
     };
   }
 
@@ -129,44 +136,63 @@ export class GroupsService {
     });
 
     if (user) {
-      // Existing user → in-app invite
-      const existingMembership = await this.prisma.groupMember.findUnique({
+      // Find any membership (active or previously removed) using findUnique since there's a unique constraint
+      let membership = await this.prisma.groupMember.findUnique({
         where: { userId_groupId: { userId: user.id, groupId } },
+        include: { user: true }, // ensure user is included
       });
 
-      if (existingMembership && existingMembership.leftAt === null) {
-        throw new ConflictException('User already in group');
+      if (membership) {
+        if (membership.leftAt === null) {
+          throw new ConflictException('User already in group');
+        }
+
+        // Reactivate removed member
+        membership = await this.prisma.groupMember.update({
+          where: { id: membership.id },
+          data: {
+            leftAt: null,
+            role: GroupRole.MEMBER,
+          },
+          include: { user: true }, // include user
+        });
+      } else {
+        // Create new membership
+        membership = await this.prisma.groupMember.create({
+          data: {
+            userId: user.id,
+            groupId,
+            role: GroupRole.MEMBER,
+          },
+          include: { user: true },
+        });
       }
 
-      const member = existingMembership
-        ? await this.prisma.groupMember.update({
-            where: { id: existingMembership.id },
-            data: { leftAt: null },
-          })
-        : await this.prisma.groupMember.create({
-            data: {
-              userId: user.id,
-              groupId,
-              role: GroupRole.MEMBER,
-            },
-          });
-
-      await this.prisma.groupMemberNotification.create({
-        data: { groupId, userId: user.id },
+      // Create notification (check if it exists first to avoid duplicates)
+      const existingNotification = await this.prisma.groupMemberNotification.findFirst({
+        where: { groupId, userId: user.id },
       });
+      
+      if (!existingNotification) {
+        await this.prisma.groupMemberNotification.create({
+          data: { groupId, userId: user.id },
+        });
+      } else {
+        // Update existing notification to pending if it was declined
+        await this.prisma.groupMemberNotification.update({
+          where: { id: existingNotification.id },
+          data: { status: NotificationStatus.PENDING },
+        });
+      }
 
-      return member;
+      return membership;
     }
 
-    // New user → email invite
+    // For new user → create invite
     const token = generateSecureToken();
 
     const invite = await this.prisma.groupInvite.create({
-      data: {
-        groupId,
-        email: normalizedEmail,
-        token,
-      },
+      data: { groupId, email: normalizedEmail, token },
       include: { group: true },
     });
 
@@ -179,28 +205,32 @@ export class GroupsService {
     return invite;
   }
 
+
   // ---------------- Remove Member ----------------
-  async removeMember(
-    groupId: string,
-    userId: string,
-    requestingUserId: string,
-  ) {
-    const admins = await this.prisma.groupMember.findMany({
-      where: { groupId, role: GroupRole.ADMIN, leftAt: null },
-    });
-
-    if (admins.length === 1 && admins[0].userId === userId) {
-      throw new BadRequestException(
-        'Cannot remove the last admin. Transfer admin role first.',
-      );
-    }
-
+  async removeMember(groupId: string, userId: string) {
     const membership = await this.prisma.groupMember.findUnique({
       where: { userId_groupId: { userId, groupId } },
     });
 
     if (!membership || membership.leftAt !== null) {
       throw new NotFoundException('User is not a member of this group');
+    }
+
+    // Prevent removing the last admin
+    if (membership.role === GroupRole.ADMIN) {
+      const adminCount = await this.prisma.groupMember.count({
+        where: {
+          groupId,
+          role: GroupRole.ADMIN,
+          leftAt: null,
+        },
+      });
+
+      if (adminCount === 1) {
+        throw new BadRequestException(
+          'Cannot remove the last admin. Transfer admin role first.',
+        );
+      }
     }
 
     return this.prisma.groupMember.update({

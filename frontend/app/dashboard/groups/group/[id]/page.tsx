@@ -28,11 +28,14 @@ export default function GroupPage() {
   const [group, setGroup] = useState<Group | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Add Member Modal state
+  // Add member modal
   const [showAddMember, setShowAddMember] = useState(false);
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Remove state
+  const [removingUserId, setRemovingUserId] = useState<string | null>(null);
 
   const isAdmin = group?.currentUserRole === "ADMIN";
 
@@ -40,11 +43,10 @@ export default function GroupPage() {
   const fetchGroup = async () => {
     try {
       const res = await fetch(`http://localhost:3000/groups/${groupId}`, {
-        credentials: "include", // 🔑 REQUIRED for cookie-based auth
+        credentials: "include",
       });
 
-      if (res.status === 401) throw new Error("Unauthorized");
-      if (!res.ok) throw new Error("Group not found");
+      if (!res.ok) throw new Error("Failed to load group");
 
       const data = await res.json();
       setGroup(data);
@@ -60,7 +62,7 @@ export default function GroupPage() {
     if (groupId) fetchGroup();
   }, [groupId]);
 
-  // ---------------- Add Member Handler ----------------
+  // ---------------- Add Member ----------------
   const handleAddMember = async () => {
     if (!email.trim()) return;
 
@@ -72,21 +74,15 @@ export default function GroupPage() {
         `http://localhost:3000/groups/${groupId}/members`,
         {
           method: "POST",
-          credentials: "include", //  REQUIRED
-          headers: {
-            "Content-Type": "application/json",
-          },
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email }),
         }
       );
 
       const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to add member");
 
-      if (!res.ok) {
-        throw new Error(data.message || "Failed to add member");
-      }
-
-      // Success → close modal & refresh members
       setShowAddMember(false);
       setEmail("");
       await fetchGroup();
@@ -97,15 +93,37 @@ export default function GroupPage() {
     }
   };
 
+  // ---------------- Remove Member ----------------
+  const handleRemoveMember = async (userId: string) => {
+    try {
+      setRemovingUserId(userId);
+
+      const res = await fetch(
+        `http://localhost:3000/groups/${groupId}/members/${userId}`,
+        {
+          method: "DELETE",
+          credentials: "include",
+        }
+      );
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "Failed to remove member");
+      }
+
+      await fetchGroup();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setRemovingUserId(null);
+    }
+  };
+
   if (loading) return <p className="text-white/60">Loading group...</p>;
   if (!group) return <p className="text-white/60">Group not found.</p>;
 
   return (
     <section className="relative min-h-screen overflow-hidden pt-6">
-      {/* Background gradients */}
-      <div className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-[radial-gradient(ellipse_at_center,_rgba(34,197,94,0.3)_0%,_rgba(34,197,94,0.1)_30%,_transparent_70%)]" />
-      <div className="pointer-events-none absolute top-0 right-0 w-[600px] h-[600px] bg-[radial-gradient(ellipse_at_top_right,_rgba(34,197,94,0.15)_0%,_transparent_60%)]" />
-
       <main className="relative z-10 flex-1 overflow-hidden">
         <section className="pt-16 px-4 max-w-4xl mx-auto">
           <SectionHeader className="mb-6 text-center">
@@ -122,41 +140,29 @@ export default function GroupPage() {
                   key={member.id}
                   className="rounded-md bg-black/40 p-3 flex justify-between items-center text-white"
                 >
-                  <span>
-                    {member.name}{" "}
-                  </span>
-                  <span className="flex items-center gap-2">
-                    <span className="text-sm text-white/60">{member.email}</span>
+                  <div>
+                    <div>{member.name}</div>
+                    <div className="text-sm text-white/60">
+                      {member.email}
+                    </div>
+                  </div>
 
-                    {/* Remove button only for admin */}
-                    {isAdmin && member.role !== "ADMIN" && (
-                      <button
-                        onClick={async () => {
-                          try {
-                            await fetch(
-                              `http://localhost:3000/groups/${groupId}/members/${member.id}`,
-                              {
-                                method: "DELETE",
-                                credentials: "include",
-                              }
-                            );
-                            await fetchGroup();
-                          } catch (err) {
-                            console.error(err);
-                          }
-                        }}
-                        className="text-red-500 hover:text-red-400"
-                      >
-                        
-                      </button>
-                    )}
-                  </span>
+                  {isAdmin && member.role !== "ADMIN" && (
+                    <GlossyButton
+                      onClick={() => handleRemoveMember(member.id)}
+                      disabled={removingUserId === member.id}
+                    >
+                      {removingUserId === member.id
+                        ? "Removing..."
+                        : "Remove Member"}
+                    </GlossyButton>
+                  )}
                 </li>
               ))}
             </ul>
           </div>
 
-          {/* Add Member Button (only for admin) */}
+          {/* Add Member Button */}
           {isAdmin && (
             <GlossyButton onClick={() => setShowAddMember(true)}>
               <span className="inline-flex items-center gap-2">
@@ -167,7 +173,7 @@ export default function GroupPage() {
           )}
         </section>
 
-        {/* ---------------- Add Member Modal ---------------- */}
+        {/* Add Member Modal */}
         {showAddMember && isAdmin && (
           <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center">
             <div className="bg-zinc-900 rounded-lg p-6 w-full max-w-md text-white">
@@ -186,7 +192,9 @@ export default function GroupPage() {
                 className="w-full rounded-md bg-black/40 px-3 py-2 text-white outline-none mb-3"
               />
 
-              {error && <p className="text-sm text-red-400 mb-2">{error}</p>}
+              {error && (
+                <p className="text-sm text-red-400 mb-2">{error}</p>
+              )}
 
               <GlossyButton
                 onClick={handleAddMember}

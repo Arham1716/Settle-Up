@@ -61,12 +61,8 @@ export class GroupsController {
 
   @Delete(':id/members/:userId')
   @UseGuards(GroupAdminGuard)
-  removeMember(
-    @Param('id') id: string,
-    @Param('userId') userId: string,
-    @Request() req: AuthenticatedRequest,
-  ) {
-    return this.groupsService.removeMember(id, userId, req.user.id);
+  removeMember(@Param('id') id: string, @Param('userId') userId: string) {
+    return this.groupsService.removeMember(id, userId);
   }
 
   @Patch(':id/members/:userId')
