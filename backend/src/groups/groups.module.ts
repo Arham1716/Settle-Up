@@ -3,9 +3,10 @@ import { GroupsController } from './groups.controller';
 import { GroupsService } from './groups.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { MailModule } from '../mail/mail.module';
+import { ExpensesModule } from '../expenses/expenses.module';
 
 @Module({
-  imports: [PrismaModule, MailModule],
+  imports: [PrismaModule, MailModule, ExpensesModule],
   controllers: [GroupsController],
   providers: [GroupsService],
   exports: [GroupsService],

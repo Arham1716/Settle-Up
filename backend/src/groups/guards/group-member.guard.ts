@@ -21,7 +21,8 @@ export class GroupMemberGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
     const userId = request.user?.id;
-    const groupId = request.params.id;
+    // Prioritize 'groupId' over 'id' to handle expenses routes where 'id' is the expense ID
+    const groupId = request.params.groupId || request.params.id;
 
     if (!userId) {
       throw new ForbiddenException('User not authenticated');

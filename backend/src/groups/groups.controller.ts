@@ -10,6 +10,7 @@ import {
   Request,
 } from '@nestjs/common';
 import { GroupsService } from './groups.service';
+import { ExpensesService } from '../expenses/expenses.service';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { UpdateGroupDto } from './dto/update-group.dto';
 import { AddMemberDto } from './dto/add-member.dto';
@@ -22,7 +23,10 @@ import type { AuthenticatedRequest } from '../auth/types/auth-request';
 @Controller('groups')
 @UseGuards(JwtAuthGuard) // Apply your auth guard to all routes
 export class GroupsController {
-  constructor(private readonly groupsService: GroupsService) {}
+  constructor(
+    private readonly groupsService: GroupsService,
+    private readonly expensesService: ExpensesService,
+  ) {}
 
   @Post()
   create(@Request() req: AuthenticatedRequest, @Body() dto: CreateGroupDto) {
@@ -86,5 +90,12 @@ export class GroupsController {
   @UseGuards(GroupMemberGuard)
   getBalances(@Param('id') id: string) {
     return this.groupsService.getBalances(id);
+  }
+
+  // Group Balance Summary
+  @Get(':id/balance')
+  @UseGuards(GroupMemberGuard)
+  getBalance(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
+    return this.expensesService.getGroupBalance(id, req.user.id);
   }
 }

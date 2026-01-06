@@ -27,16 +27,16 @@ export class AuthController {
     @Body() body: SignupDto,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const token = await this.auth.login(body.email, body.password);
+      const token = await this.auth.login(body.email, body.password);
 
-    res.cookie('jwt', token, {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: false,
-      path: '/',
-    });
+      res.cookie('jwt', token, {
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: false,
+        path: '/',
+      });
 
-    return { success: true };
+      return { success: true };
   }
 
   @UseGuards(JwtAuthGuard)
