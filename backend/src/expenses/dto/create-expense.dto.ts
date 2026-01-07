@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsNumber, IsPositive, MaxLength } from 'class-validator';
+import { IsString, IsNotEmpty, IsNumber, IsPositive, MaxLength, IsOptional } from 'class-validator';
 
 export class CreateExpenseDto {
   @IsString()
@@ -9,6 +9,11 @@ export class CreateExpenseDto {
   @IsNumber()
   @IsPositive()
   amount: number;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(3)
+  currency?: string; // Currency code (e.g., USD, EUR, GBP)
 
   @IsString()
   @IsNotEmpty()

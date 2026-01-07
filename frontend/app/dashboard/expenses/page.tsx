@@ -4,12 +4,13 @@ import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { GlossyButton } from "@/components/ui/glossy-button";
 import { SectionHeader } from "@/components/ui/section-header";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Edit } from "lucide-react";
 
 type Expense = {
   id: string;
   description: string;
   amount: number;
+  currency: string;
   paidBy: {
     id: string;
     name: string;
@@ -38,13 +39,19 @@ export default function ExpensesPage() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddExpense, setShowAddExpense] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Form state
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
+  const [currency, setCurrency] = useState("USD");
   const [paidById, setPaidById] = useState("");
+
+  const popularCurrencies = [
+    "USD", "EUR", "GBP", "JPY", "AUD", "CAD", "CHF", "CNY", "INR", "NZD", "SGD", "HKD", "SEK", "NOK", "MXN", "BRL", "ZAR", "KRW", "TRY", "RUB"
+  ];
 
   // Fetch expenses
   const fetchExpenses = async () => {
@@ -115,6 +122,7 @@ export default function ExpensesPage() {
           body: JSON.stringify({
             description,
             amount: parseFloat(amount),
+            currency: currency.trim().toUpperCase(),
             paidById,
           }),
         }
@@ -124,8 +132,59 @@ export default function ExpensesPage() {
       if (!res.ok) throw new Error(data.message || "Failed to add expense");
 
       setShowAddExpense(false);
+      setEditingExpense(null);
       setDescription("");
       setAmount("");
+      setCurrency("USD");
+      setPaidById("");
+      await fetchExpenses();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleEditExpense = (expense: Expense) => {
+    setEditingExpense(expense);
+    setDescription(expense.description);
+    setAmount(expense.amount.toString());
+    setCurrency(expense.currency || "USD");
+    setPaidById(expense.paidBy.id);
+    setShowAddExpense(true);
+    setError(null);
+  };
+
+  const handleUpdateExpense = async () => {
+    if (!groupId || !editingExpense || !description.trim() || !amount || !paidById) return;
+
+    setSubmitting(true);
+    setError(null);
+
+    try {
+      const res = await fetch(
+        `http://localhost:3000/groups/${groupId}/expenses/${editingExpense.id}`,
+        {
+          method: "PATCH",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            description,
+            amount: parseFloat(amount),
+            currency: currency.trim().toUpperCase(),
+            paidById,
+          }),
+        }
+      );
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to update expense");
+
+      setShowAddExpense(false);
+      setEditingExpense(null);
+      setDescription("");
+      setAmount("");
+      setCurrency("USD");
       setPaidById("");
       await fetchExpenses();
     } catch (err: any) {
@@ -155,11 +214,58 @@ export default function ExpensesPage() {
     }
   };
 
+  const [allGroups, setAllGroups] = useState<Array<{ id: string; name: string; description?: string }>>([]);
+
+  useEffect(() => {
+    if (!groupId) {
+      // Fetch all groups when no groupId is selected
+      const fetchGroups = async () => {
+        try {
+          const res = await fetch("http://localhost:3000/groups", {
+            credentials: "include",
+          });
+          if (res.ok) {
+            const data = await res.json();
+            setAllGroups(Array.isArray(data) ? data : []);
+          }
+        } catch (err) {
+          console.error("Failed to fetch groups", err);
+        }
+      };
+      fetchGroups();
+    }
+  }, [groupId]);
+
   if (!groupId) {
     return (
       <section className="relative min-h-screen overflow-hidden pt-16">
-        <div className="relative z-10 px-4">
-          <p className="text-white/60">No group selected</p>
+        <div className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-[radial-gradient(ellipse_at_center,_rgba(34,197,94,0.3)_0%,_rgba(34,197,94,0.1)_30%,_transparent_70%)]" />
+        <div className="pointer-events-none absolute top-0 right-0 w-[600px] h-[600px] bg-[radial-gradient(ellipse_at_top_right,_rgba(34,197,94,0.15)_0%,_transparent_60%)]" />
+        
+        <div className="relative z-10 px-4 max-w-4xl mx-auto">
+          <SectionHeader className="mb-6 text-center">
+            <h1>Expenses</h1>
+            <p>Select a group to manage expenses</p>
+          </SectionHeader>
+
+          {allGroups.length === 0 ? (
+            <p className="text-white/60 text-center">You are not part of any group yet.</p>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2">
+              {allGroups.map((group) => (
+                <GlossyButton
+                  key={group.id}
+                  onClick={() => router.push(`/dashboard/expenses?groupId=${group.id}`)}
+                  className="p-4 text-left"
+                >
+                  <h2 className="text-lg font-medium text-white">{group.name}</h2>
+                  {group.description && (
+                    <p className="mt-1 text-sm text-white/60">{group.description}</p>
+                  )}
+                </GlossyButton>
+              ))}
+            </div>
+          )}
         </div>
       </section>
     );
@@ -196,16 +302,23 @@ export default function ExpensesPage() {
                     <div className="flex-1">
                       <div className="font-medium">{expense.description}</div>
                       <div className="text-sm text-white/60">
-                        {group?.currency || "$"}
-                        {Number(expense.amount).toFixed(2)}• Paid by: {expense.paidBy.name}
+                        {expense.currency || "USD"}
+                        {typeof expense.amount === 'number' ? expense.amount.toFixed(2) : Number(expense.amount).toFixed(2)} • Paid by: {expense.paidBy?.name || expense.paidBy?.email || "Unknown"}
                       </div>
                     </div>
-                    <GlossyButton
-                      onClick={() => handleDeleteExpense(expense.id)}
-                      className="ml-4"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </GlossyButton>
+                    <div className="flex gap-2">
+                      <GlossyButton
+                        onClick={() => handleEditExpense(expense)}
+                        className="ml-4"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </GlossyButton>
+                      <GlossyButton
+                        onClick={() => handleDeleteExpense(expense.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </GlossyButton>
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -221,11 +334,13 @@ export default function ExpensesPage() {
           </GlossyButton>
         </section>
 
-        {/* Add Expense Modal */}
+        {/* Add/Edit Expense Modal */}
         {showAddExpense && (
           <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center">
             <div className="bg-zinc-900 rounded-lg p-6 w-full max-w-md text-white">
-              <h3 className="text-lg font-semibold mb-4">Add Expense</h3>
+              <h3 className="text-lg font-semibold mb-4">
+                {editingExpense ? "Edit Expense" : "Add Expense"}
+              </h3>
 
               {error && <p className="text-sm text-red-400 mb-2">{error}</p>}
 
@@ -245,6 +360,27 @@ export default function ExpensesPage() {
                   onChange={(e) => setAmount(e.target.value)}
                   className="w-full rounded-md bg-black/40 px-3 py-2 text-white outline-none"
                 />
+                <div className="flex gap-2">
+                  <select
+                    value={currency}
+                    onChange={(e) => setCurrency(e.target.value)}
+                    className="flex-1 rounded-md bg-black/40 px-3 py-2 text-white outline-none"
+                  >
+                    {popularCurrencies.map((curr) => (
+                      <option key={curr} value={curr}>
+                        {curr}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="text"
+                    placeholder="Or type currency"
+                    value={currency}
+                    onChange={(e) => setCurrency(e.target.value.toUpperCase())}
+                    maxLength={3}
+                    className="flex-1 rounded-md bg-black/40 px-3 py-2 text-white outline-none"
+                  />
+                </div>
                 <select
                   value={paidById}
                   onChange={(e) => setPaidById(e.target.value)}
@@ -253,7 +389,7 @@ export default function ExpensesPage() {
                   <option value="">Select who paid</option>
                   {group?.members.map((member) => (
                     <option key={member.id} value={member.id}>
-                      {member.name}
+                      {member.name || member.email}
                     </option>
                   ))}
                 </select>
@@ -261,21 +397,28 @@ export default function ExpensesPage() {
 
               <div className="flex gap-2 mt-4">
                 <GlossyButton
-                  onClick={handleAddExpense}
+                  onClick={editingExpense ? handleUpdateExpense : handleAddExpense}
                   disabled={submitting}
                   className="flex-1"
                 >
-                  {submitting ? "Adding..." : "Add"}
+                  {submitting ? (editingExpense ? "Updating..." : "Adding...") : (editingExpense ? "Update" : "Add")}
                 </GlossyButton>
-                <GlossyButton
-                  onClick={() => {
-                    setShowAddExpense(false);
-                    setError(null);
-                  }}
-                  className="flex-1"
-                >
-                  Cancel
-                </GlossyButton>
+                {editingExpense && (
+                  <GlossyButton
+                    onClick={() => {
+                      setShowAddExpense(false);
+                      setEditingExpense(null);
+                      setDescription("");
+                      setAmount("");
+                      setCurrency("USD");
+                      setPaidById("");
+                      setError(null);
+                    }}
+                    className="flex-1"
+                  >
+                    Cancel
+                  </GlossyButton>
+                )}
               </div>
             </div>
           </div>
