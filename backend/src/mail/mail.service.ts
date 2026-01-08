@@ -103,4 +103,34 @@ export class MailService implements OnModuleInit {
       );
     }
   }
+
+  async sendSupportEmail(
+    to: string,
+    subject: string,
+    message: string,
+  ): Promise<void> {
+    if (!this.transporter) {
+      throw new ServiceUnavailableException(
+        'Email service temporarily unavailable',
+      );
+    }
+
+    try {
+      await this.transporter.sendMail({
+        from: `"Expense Tracker Support" <${process.env.GMAIL_USER}>`,
+        to,
+        subject,
+        text: message,
+        html: `<pre style="white-space: pre-wrap; font-family: Arial, sans-serif;">${message}</pre>`,
+      });
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        console.error('MAIL SEND ERROR:', error.message);
+      } else {
+        console.error('MAIL SEND ERROR:', error);
+      }
+
+      throw new InternalServerErrorException('Failed to send support email');
+    }
+  }
 }
