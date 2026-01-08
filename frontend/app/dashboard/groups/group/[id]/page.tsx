@@ -263,7 +263,7 @@ export default function GroupPage() {
       {/* Background gradients (same as CreateGroupPage) */}
       <div className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-[radial-gradient(ellipse_at_center,_rgba(34,197,94,0.3)_0%,_rgba(34,197,94,0.1)_30%,_transparent_70%)]" />
       <div className="pointer-events-none absolute top-0 right-0 w-[600px] h-[600px] bg-[radial-gradient(ellipse_at_top_right,_rgba(34,197,94,0.15)_0%,_transparent_60%)]" />
-      
+
       <main className="relative z-10 flex-1 overflow-hidden">
         <section className="pt-16 px-4 max-w-4xl mx-auto">
           <SectionHeader className="mb-6 text-center">
