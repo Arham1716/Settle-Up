@@ -50,7 +50,7 @@ export default function ExpensesPage() {
   const [paidById, setPaidById] = useState("");
 
   const popularCurrencies = [
-    "USD", "EUR", "GBP", "JPY", "AUD", "CAD", "CHF", "CNY", "INR", "NZD", "SGD", "HKD", "SEK", "NOK", "MXN", "BRL", "ZAR", "KRW", "TRY", "RUB"
+    "USD", "EUR", "GBP", "JPY", "AUD", "CAD", "INR", "NZD", "PKR", "HKD",
   ];
 
   // Fetch expenses
@@ -396,30 +396,30 @@ export default function ExpensesPage() {
               </div>
 
               <div className="flex gap-2 mt-4">
-                <GlossyButton
-                  onClick={editingExpense ? handleUpdateExpense : handleAddExpense}
-                  disabled={submitting}
-                  className="flex-1"
-                >
-                  {submitting ? (editingExpense ? "Updating..." : "Adding...") : (editingExpense ? "Update" : "Add")}
-                </GlossyButton>
-                {editingExpense && (
-                  <GlossyButton
-                    onClick={() => {
-                      setShowAddExpense(false);
-                      setEditingExpense(null);
-                      setDescription("");
-                      setAmount("");
-                      setCurrency("USD");
-                      setPaidById("");
-                      setError(null);
-                    }}
-                    className="flex-1"
-                  >
-                    Cancel
-                  </GlossyButton>
-                )}
-              </div>
+              <GlossyButton
+                onClick={editingExpense ? handleUpdateExpense : handleAddExpense}
+                disabled={submitting}
+                className="flex-1"
+              >
+                {submitting ? (editingExpense ? "Updating..." : "Adding...") : (editingExpense ? "Update" : "Add")}
+              </GlossyButton>
+
+              {/* Cancel button for both Add and Edit */}
+              <GlossyButton
+                onClick={() => {
+                  setShowAddExpense(false);
+                  setEditingExpense(null);
+                  setDescription("");
+                  setAmount("");
+                  setCurrency("USD");
+                  setPaidById("");
+                  setError(null);
+                }}
+                className="flex-1"
+              >
+                Cancel
+              </GlossyButton>
+            </div>
             </div>
           </div>
         )}

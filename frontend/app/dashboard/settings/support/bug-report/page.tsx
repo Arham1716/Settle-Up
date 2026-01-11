@@ -52,8 +52,10 @@ export default function BugReportPage() {
           onClick={() => router.back()}
           className="mb-6"
         >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back
+          <span className="inline-flex items-center ">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back
+          </span>
         </GlossyButton>
 
         <SectionHeader className="mb-6">

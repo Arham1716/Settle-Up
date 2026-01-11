@@ -8,7 +8,6 @@ import {
   UseGuards,
   Request,
   Param,
-  Query,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { SettingsService } from './settings.service';

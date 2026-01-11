@@ -265,7 +265,7 @@ export default function GroupPage() {
       <div className="pointer-events-none absolute top-0 right-0 w-[600px] h-[600px] bg-[radial-gradient(ellipse_at_top_right,_rgba(34,197,94,0.15)_0%,_transparent_60%)]" />
 
       <main className="relative z-10 flex-1 overflow-hidden">
-        <section className="pt-16 px-4 max-w-4xl mx-auto">
+        <section className="pt-16 pb-8 px-4 max-w-4xl mx-auto">
           <SectionHeader className="mb-6 text-center">
             <h1>{group.name}</h1>
             {group.description && <p>{group.description}</p>}
