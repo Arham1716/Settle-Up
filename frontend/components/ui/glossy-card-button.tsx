@@ -2,13 +2,9 @@
 
 import * as React from "react"
 import { cn } from "@/lib/utils"
-import { motion } from "framer-motion"
-
+import { motion, HTMLMotionProps } from "framer-motion"
 interface GlossyCardButtonProps
-  extends Omit<
-    React.ButtonHTMLAttributes<HTMLButtonElement>,
-    "onDrag" | "onDragStart" | "onDragEnd"
-  > {
+  extends Omit<HTMLMotionProps<"button">, "onDrag" | "onDragStart" | "onDragEnd"> {
   children: React.ReactNode
   size?: "default" | "lg"
 }

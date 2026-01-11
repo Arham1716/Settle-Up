@@ -216,7 +216,7 @@ export default function GroupPage() {
     try {
       let body: any = { splitType };
 
-      if (splitType === "UNEQUAL") {
+      if (splitType === "UNEQUAL" && group) {
         const memberSplits = group.members.map((member) => ({
           userId: member.id,
           amount: unequalSplits[member.id] || "0",
