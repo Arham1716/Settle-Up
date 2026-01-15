@@ -9,6 +9,7 @@ import { MailModule } from './mail/mail.module';
 import { InviteModule } from './invite/invite.module';
 import { ExpensesModule } from './expenses/expenses.module';
 import { DashboardModule } from "./dashboard/dashboard.module";
+import { ActivityModule } from "./activity/activity.module";
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { DashboardModule } from "./dashboard/dashboard.module";
     MailModule,
     InviteModule,
     ExpensesModule,
+    ActivityModule,
     DashboardModule,
   ],
   controllers: [AppController],
