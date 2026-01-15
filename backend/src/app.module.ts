@@ -8,6 +8,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { MailModule } from './mail/mail.module';
 import { InviteModule } from './invite/invite.module';
 import { ExpensesModule } from './expenses/expenses.module';
+import { DashboardModule } from "./dashboard/dashboard.module";
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { ExpensesModule } from './expenses/expenses.module';
     MailModule,
     InviteModule,
     ExpensesModule,
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [AppService],
