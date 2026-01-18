@@ -59,8 +59,8 @@ export class GroupsController {
   // Member management
   @Post(':id/members')
   @UseGuards(GroupAdminGuard)
-  async addMember(@Param('id') id: string, @Body() dto: AddMemberDto) {
-    return this.groupsService.addMember(id, dto.email);
+  async addMember(@Param('id') id: string, @Body() dto: AddMemberDto, @Request() req: AuthenticatedRequest) {
+    return this.groupsService.addMember(id, dto.email, req.user.id);
   }
 
   @Delete(':id/members/:userId')

@@ -5,13 +5,18 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { ActivityType } from "@prisma/client";
+import { ActivityService } from '../activity/activity.service';
 import { CreateExpenseDto } from './dto/create-expense.dto';
 import { UpdateExpenseDto } from './dto/update-expense.dto';
 import { SplitBalanceDto, SplitType } from './dto/split-balance.dto';
 
 @Injectable()
 export class ExpensesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly activityService: ActivityService,
+  ) {}
 
   // ---------------- Create Expense ----------------
   async create(groupId: string, userId: string, dto: CreateExpenseDto) {
@@ -63,6 +68,20 @@ export class ExpensesService {
           },
         },
       },
+    });
+
+    //log activity
+    await this.activityService.logGroupActivity({
+      actorId: userId,
+      groupId,
+      type: ActivityType.EXPENSE_ADDED,
+      title: `${expense.paidBy.name} added an expense`,
+      metadata: {
+        expenseId: expense.id,
+        amount: Number(expense.amount),
+        currency: expense.currency,
+      },
+      excludeActor: false,
     });
 
     // Convert Decimal to number for frontend
@@ -233,6 +252,19 @@ export class ExpensesService {
       },
     });
 
+    //log activity
+    await this.activityService.logGroupActivity({
+      actorId: userId,
+      groupId,
+      type: ActivityType.EXPENSE_UPDATED,
+      title: `Expense updated`,
+      metadata: {
+        expenseId: updated.id,
+        amount: Number(updated.amount),
+      },
+      excludeActor: false, //change to true if you don't want the admin of group to receive activity for their own actions
+    });
+
     // Convert Decimal to number for frontend
     return {
       ...updated,
@@ -272,6 +304,19 @@ export class ExpensesService {
         'You can only delete expenses you paid or if you are an admin',
       );
     }
+
+    //log activity
+    await this.activityService.logGroupActivity({
+      actorId: userId,
+      groupId: expense.groupId, 
+      type: ActivityType.EXPENSE_DELETED,
+      title: `Expense deleted`,
+      metadata: {
+        expenseId,
+        description: expense.description,
+      },
+      excludeActor: false,
+    });
 
     return this.prisma.expense.delete({
       where: { id: expenseId },

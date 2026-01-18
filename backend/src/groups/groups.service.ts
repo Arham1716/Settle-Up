@@ -10,17 +10,19 @@ import { UpdateGroupDto } from './dto/update-group.dto';
 import { GroupRole, GroupMember, GroupInvite, NotificationStatus } from '@prisma/client';
 import { generateSecureToken } from '../common/utils/token';
 import { MailService } from '../mail/mail.service';
+import { ActivityService } from '../activity/activity.service';
 
 @Injectable()
 export class GroupsService {
   constructor(
     private prisma: PrismaService,
     private mailService: MailService,
+    private activityService: ActivityService,
   ) {}
 
   // ---------------- Create Group ----------------
   async create(userId: string, dto: CreateGroupDto) {
-    return this.prisma.group.create({
+    const group = await this.prisma.group.create({
       data: {
         name: dto.name,
         description: dto.description,
@@ -40,6 +42,13 @@ export class GroupsService {
           include: { user: { select: { id: true, name: true, email: true } } },
         },
       },
+    });
+    console.log('ABOUT TO LOG MEMBER_ADDED ACTIVITY');
+    await this.activityService.logGroupActivity({
+      actorId: userId,
+      groupId: group.id,
+      type: 'GROUP_CREATED',
+      title: `Group "${group.name}" was created`,
     });
   }
 
@@ -61,7 +70,6 @@ export class GroupsService {
         description: true,
       },
     });
-
     return groups;
   }
 
@@ -134,7 +142,8 @@ export class GroupsService {
   }
 
   // ---------------- Add Member ----------------
-  async addMember(groupId: string, email: string) {
+  async addMember(groupId: string, email: string, actorId: string) {
+    console.log('ADD MEMBER METHOD HIT');
     const normalizedEmail = email.toLowerCase().trim();
 
     const user = await this.prisma.user.findUnique({
@@ -175,22 +184,28 @@ export class GroupsService {
       }
 
       // Create notification (check if it exists first to avoid duplicates)
-      const existingNotification = await this.prisma.groupMemberNotification.findFirst({
-        where: { groupId, userId: user.id },
+      const activeMembers = await this.prisma.groupMember.findMany({
+        where: { groupId, leftAt: null },
+        select: { userId: true },
       });
-      
-      if (!existingNotification) {
-        await this.prisma.groupMemberNotification.create({
-          data: { groupId, userId: user.id },
-        });
-      } else {
-        // Update existing notification to pending if it was declined
-        await this.prisma.groupMemberNotification.update({
-          where: { id: existingNotification.id },
-          data: { status: NotificationStatus.PENDING },
-        });
-      }
+      console.log('STEP A: reached before logGroupActivity', {
+        actorId,
+        groupId,
+        addedUserId: user.id,
+      });
+      await this.activityService.logGroupActivity({
+        actorId,
+        groupId,
+        type: 'MEMBER_ADDED',
+        title: `${user.name || user.email} was added to the group`,
+        metadata: {
+          addedUserId: user.id,
+          email: user.email,
+        },
+        recipients: activeMembers.map((m) => m.userId),
+      });
 
+      console.log('STEP B: finished logGroupActivity');
       return membership;
     }
 
@@ -238,6 +253,15 @@ export class GroupsService {
         );
       }
     }
+    await this.activityService.logGroupActivity({
+      actorId: userId,
+      groupId,
+      type: 'MEMBER_REMOVED',
+      title: `A member was removed from the group`,
+      metadata: {
+        removedUserId: userId,
+      },
+    });
 
     return this.prisma.groupMember.update({
       where: { id: membership.id },

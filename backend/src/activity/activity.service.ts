@@ -22,16 +22,53 @@ export class ActivityService {
     });
   }
 
-  async logActivity(params: {
+  async logGroupActivity(params: {
     actorId: string;
-    userId: string;
-    groupId?: string;
+    groupId: string;
     type: ActivityType;
     title: string;
     metadata?: Prisma.InputJsonValue;
+    recipients?: string[];
+    excludeActor?: boolean;
   }) {
-    return this.prisma.activity.create({
-      data: params,
+    let recipients: string[];
+
+    if (params.recipients) {
+      recipients = params.recipients;
+    } else {
+      const memberIds = await this.getActiveGroupMemberIds(params.groupId);
+      recipients = params.excludeActor
+        ? memberIds.filter((id) => id !== params.actorId)
+        : memberIds;
+    }
+
+    await Promise.all(
+      recipients.map((userId) =>
+        this.prisma.activity.create({
+          data: {
+            actorId: params.actorId,
+            userId,
+            groupId: params.groupId,
+            type: params.type,
+            title: params.title,
+            metadata: params.metadata,
+          },
+        }),
+      ),
+    );
+  }
+
+  private async getActiveGroupMemberIds(groupId: string): Promise<string[]> {
+    const members = await this.prisma.groupMember.findMany({
+      where: {
+        groupId,
+        leftAt: null,
+      },
+      select: {
+        userId: true,
+      },
     });
+
+    return members.map((m) => m.userId);
   }
 }

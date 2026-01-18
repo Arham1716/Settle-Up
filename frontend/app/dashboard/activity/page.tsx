@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { GlossyCardButton } from "@/components/ui/glossy-card-button";
+import { ActivityIcon } from "@/components/ui/icons";
 
 type Activity = {
   id: string;
@@ -94,17 +95,23 @@ export default function ActivityPage() {
               <div key={activity.id}>
                 <GlossyCardButton
                   onClick={() => toggleExpand(activity.id)}
-                  className="w-full flex items-center justify-between"
+                  className="w-full"
                 >
-                  <span className="text-white font-medium">
-                    {activity.title}
-                  </span>
+                  <div className="flex w-full items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <ActivityIcon type={activity.type} />
 
-                  <ChevronDown
-                    className={`h-4 w-4 text-white/60 transition-transform ${
-                      isOpen ? "rotate-180" : ""
-                    }`}
-                  />
+                      <span className="text-white font-medium">
+                        {activity.title}
+                      </span>
+                    </div>
+
+                    <ChevronDown
+                      className={`h-4 w-4 text-white/60 transition-transform ${
+                        isOpen ? "rotate-180" : ""
+                      }`}
+                    />
+                  </div>
                 </GlossyCardButton>
 
                 {isOpen && (
