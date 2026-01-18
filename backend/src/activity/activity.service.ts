@@ -1,6 +1,6 @@
-import { Injectable } from "@nestjs/common";
-import { PrismaService } from "../prisma/prisma.service";
-import { ActivityType, Prisma } from "@prisma/client";
+import { Injectable } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { ActivityType, Prisma } from '@prisma/client';
 
 @Injectable()
 export class ActivityService {
@@ -9,7 +9,7 @@ export class ActivityService {
   async getUserActivity(userId: string) {
     return this.prisma.activity.findMany({
       where: { userId },
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: 'desc' },
       take: 30,
       include: {
         actor: {

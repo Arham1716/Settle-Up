@@ -25,7 +25,12 @@ async function main() {
   await prisma.group.deleteMany({});
   console.log("✅ Groups deleted");
 
-  // 5️⃣ Delete all users
+  // 5️⃣ Delete all activities (new step)
+  console.log("Deleting all Activities...");
+  await prisma.activity.deleteMany({});
+  console.log("✅ Activities deleted");
+
+  // 6️⃣ Delete all users
   console.log("Deleting all Users...");
   await prisma.user.deleteMany({});
   console.log("✅ Users deleted");

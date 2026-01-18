@@ -11,6 +11,7 @@ import { GroupRole, GroupMember, GroupInvite, NotificationStatus } from '@prisma
 import { generateSecureToken } from '../common/utils/token';
 import { MailService } from '../mail/mail.service';
 import { ActivityService } from '../activity/activity.service';
+import { ActivityType } from '@prisma/client';
 
 @Injectable()
 export class GroupsService {
@@ -43,7 +44,6 @@ export class GroupsService {
         },
       },
     });
-    console.log('ABOUT TO LOG MEMBER_ADDED ACTIVITY');
     await this.activityService.logGroupActivity({
       actorId: userId,
       groupId: group.id,
@@ -143,79 +143,44 @@ export class GroupsService {
 
   // ---------------- Add Member ----------------
   async addMember(groupId: string, email: string, actorId: string) {
-    console.log('ADD MEMBER METHOD HIT');
-    const normalizedEmail = email.toLowerCase().trim();
+    console.log('[ADD_MEMBER] Start', { groupId, email, actorId });
 
-    const user = await this.prisma.user.findUnique({
-      where: { email: normalizedEmail },
+    const previousMembers = await this.prisma.groupMember.findMany({
+      where: { groupId, leftAt: null },
+      select: { userId: true },
     });
 
-    if (user) {
-      // Find any membership (active or previously removed) using findUnique since there's a unique constraint
-      let membership = await this.prisma.groupMember.findUnique({
-        where: { userId_groupId: { userId: user.id, groupId } },
-        include: { user: true }, // ensure user is included
-      });
+    console.log('[ADD_MEMBER] Active members', previousMembers);
 
-      if (membership) {
-        if (membership.leftAt === null) {
-          throw new ConflictException('User already in group');
-        }
+    const normalizedEmail = email.toLowerCase().trim();
 
-        // Reactivate removed member
-        membership = await this.prisma.groupMember.update({
-          where: { id: membership.id },
-          data: {
-            leftAt: null,
-            role: GroupRole.MEMBER,
-          },
-          include: { user: true }, // include user
-        });
-      } else {
-        // Create new membership
-        membership = await this.prisma.groupMember.create({
-          data: {
-            userId: user.id,
-            groupId,
-            role: GroupRole.MEMBER,
-          },
-          include: { user: true },
-        });
-      }
-
-      // Create notification (check if it exists first to avoid duplicates)
-      const activeMembers = await this.prisma.groupMember.findMany({
-        where: { groupId, leftAt: null },
-        select: { userId: true },
-      });
-      console.log('STEP A: reached before logGroupActivity', {
-        actorId,
+    // Check if already invited
+    const existingInvite = await this.prisma.groupInvite.findFirst({
+      where: {
         groupId,
-        addedUserId: user.id,
-      });
-      await this.activityService.logGroupActivity({
-        actorId,
-        groupId,
-        type: 'MEMBER_ADDED',
-        title: `${user.name || user.email} was added to the group`,
-        metadata: {
-          addedUserId: user.id,
-          email: user.email,
-        },
-        recipients: activeMembers.map((m) => m.userId),
-      });
+        email: normalizedEmail,
+        status: 'PENDING',
+      },
+    });
 
-      console.log('STEP B: finished logGroupActivity');
-      return membership;
+    if (existingInvite) {
+      throw new ConflictException('User already invited');
     }
 
-    // For new user → create invite
+    console.log('[ADD_MEMBER] Creating invite');
+
     const token = generateSecureToken();
 
     const invite = await this.prisma.groupInvite.create({
-      data: { groupId, email: normalizedEmail, token },
+      data: {
+        groupId,
+        email: normalizedEmail,
+        token,
+      },
       include: { group: true },
     });
+
+    console.log('[ADD_MEMBER] Invite created', invite.id);
 
     await this.mailService.sendGroupInviteEmail(
       normalizedEmail,
@@ -223,9 +188,22 @@ export class GroupsService {
       token,
     );
 
+    console.log('[ADD_MEMBER] Invite email sent');
+
+    // Log MEMBER_INVITED
+    await this.activityService.logGroupActivity({
+      actorId,
+      groupId,
+      type: ActivityType.MEMBER_INVITED,
+      title: `${normalizedEmail} was invited to the group`,
+      metadata: { inviteId: invite.id },
+      recipients: previousMembers.map((m) => m.userId),
+    });
+
+    console.log('[ADD_MEMBER] Logged MEMBER_INVITED');
+
     return invite;
   }
-
 
   // ---------------- Remove Member ----------------
   async removeMember(groupId: string, userId: string) {
@@ -256,7 +234,7 @@ export class GroupsService {
     await this.activityService.logGroupActivity({
       actorId: userId,
       groupId,
-      type: 'MEMBER_REMOVED',
+      type: ActivityType.MEMBER_REMOVED,
       title: `A member was removed from the group`,
       metadata: {
         removedUserId: userId,
