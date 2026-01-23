@@ -584,7 +584,10 @@ export class ExpensesService {
     // Return member balances
     return members.map((member) => ({
       userId: member.userId,
-      user: member.user,
+      user: {
+        ...member.user,
+        displayName: member.displayName,
+      },
       role: member.role,
       balance: splitMap.get(member.userId) || 0,
     }));
@@ -633,12 +636,12 @@ export class ExpensesService {
       settlements.push({
         from: {
           id: debtor.user.id,
-          name: debtor.user.name || 'Unknown',
+          name: debtor.user.displayName || debtor.user.name || 'Unknown',
           email: debtor.user.email,
         },
         to: {
           id: creditor.user.id,
-          name: creditor.user.name || 'Unknown',
+          name: creditor.user.displayName || creditor.user.name || 'Unknown',
           email: creditor.user.email,
         },
         amount: settlementAmount,
