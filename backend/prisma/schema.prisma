@@ -15,12 +15,16 @@ model User {
 
   // New back-relation for notifications
   memberNotifications GroupMemberNotification[]
-  
+
   // Expenses paid by this user
   expensesPaid Expense[]
-  
+
   // Balance splits assigned to this user
   balanceSplits BalanceSplit[]
+
+  // Activity relations
+  activitiesPerformed Activity[] @relation("ActivityActor")
+  activitiesReceived  Activity[] @relation("ActivityRecipient")
 }
 
 model Group {
@@ -40,7 +44,10 @@ model Group {
   invites             GroupInvite[]
   memberNotifications GroupMemberNotification[]
   expenses            Expense[]
-  balanceSplits      BalanceSplit[]
+  balanceSplits       BalanceSplit[]
+
+  // Activity relation 
+  activities Activity[]
 }
 
 model GroupMember {
@@ -94,6 +101,8 @@ model GroupMemberNotification {
 
   group Group @relation(fields: [groupId], references: [id])
   user  User  @relation(fields: [userId], references: [id])
+
+  @@unique([groupId, userId])
 }
 
 enum NotificationStatus {
@@ -121,19 +130,52 @@ model Expense {
 
 // Balance splits for groups
 model BalanceSplit {
-  id          String   @id @default(uuid())
-  groupId     String
-  group       Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  userId      String
-  user        User     @relation(fields: [userId], references: [id])
-  amount      Decimal  @db.Decimal(10, 2) // Amount this user should pay (positive) or is owed (negative)
-  currency    String   @default("USD")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(uuid())
+  groupId   String
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  amount    Decimal  @db.Decimal(10, 2) // Amount this user should pay (positive) or is owed (negative)
+  currency  String   @default("USD")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
+  @@unique([groupId, userId]) // One split per user per group
   @@index([groupId])
   @@index([userId])
-  @@unique([groupId, userId]) // One split per user per group
+}
+
+model Activity {
+  id String @id @default(uuid())
+
+  actorId String // who performed the action
+  userId  String // who should see this activity
+  groupId String?
+
+  type     ActivityType
+  title    String // headline shown in UI
+  metadata Json? // expandable details (later)
+
+  createdAt DateTime @default(now())
+
+  actor User   @relation("ActivityActor", fields: [actorId], references: [id])
+  user  User   @relation("ActivityRecipient", fields: [userId], references: [id])
+  group Group? @relation(fields: [groupId], references: [id])
+
+  @@index([userId])
+  @@index([groupId])
+  @@index([createdAt])
+}
+
+enum ActivityType {
+  GROUP_CREATED
+  GROUP_JOINED
+  MEMBER_ADDED
+  MEMBER_INVITED
+  MEMBER_REMOVED
+  EXPENSE_ADDED
+  EXPENSE_UPDATED
+  EXPENSE_DELETED
 }
 
 generator client {
