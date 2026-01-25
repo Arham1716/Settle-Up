@@ -261,11 +261,10 @@ export default function GroupPage() {
 
   return (
     <>
-      <GradientLayer sectionId="main-section" sidebarOffset={0} />
       <section className="relative min-h-screen overflow-hidden pt-6">
 
       <main className="relative z-10 flex-1 overflow-hidden">
-        <section className="pt-16 pb-8 px-4 max-w-4xl mx-auto">
+        <section id="main-section" className="pt-16 pb-8 px-4 max-w-4xl mx-auto">
           <SectionHeader className="mb-6 text-center">
             <h1>{group.name}</h1>
             {group.description && <p>{group.description}</p>}

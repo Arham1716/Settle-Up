@@ -51,10 +51,6 @@ export default function CreateGroupPage() {
 
   return (
     <section className="relative min-h-screen overflow-hidden pt-16">
-      {/* Background gradients */}
-      <div className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-[radial-gradient(ellipse_at_center,_rgba(34,197,94,0.3)_0%,_rgba(34,197,94,0.1)_30%,_transparent_70%)]" />
-      <div className="pointer-events-none absolute top-0 right-0 w-[600px] h-[600px] bg-[radial-gradient(ellipse_at_top_right,_rgba(34,197,94,0.15)_0%,_transparent_60%)]" />
-
       <div className="relative z-10 flex justify-center px-4 sm:px-6 lg:px-8">
         <div className="w-full max-w-md space-y-6">
           <h1 className="text-2xl font-semibold text-white">
@@ -66,15 +62,18 @@ export default function CreateGroupPage() {
           )}
 
           <form onSubmit={handleCreateGroup} className="space-y-4">
-            <Input name="name" placeholder="Group name" required />
+            <Input name="name" 
+            placeholder="Group name" required 
+            className="bg-black/40 text-white border border-white/10 focus:border-green-400" />
             <Input
               name="description"
               placeholder="Description (optional)"
+              className="bg-black/40 text-white border border-white/10 focus:border-green-400"
             />
             <Input
               name="displayName"
-              placeholder="Your name in this group"
-              required
+              placeholder="Your name in this group" required
+              className="bg-black/40 text-white border border-white/10 focus:border-green-400"
             />
             <Button type="submit" disabled={loading}>
               {loading ? "Creating..." : "Create Group"}

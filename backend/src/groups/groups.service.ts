@@ -106,7 +106,7 @@ export class GroupsService {
 
     // Get current user's role (even if they were removed, fallback to null)
     const currentMembership = group.members.find(
-      (m) => m.userId === currentUserId && m.leftAt === null
+      (m) => m.userId === currentUserId && m.leftAt === null,
     );
     const currentUserRole = currentMembership?.role || null;
 
