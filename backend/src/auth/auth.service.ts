@@ -4,6 +4,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { UserService } from '../user/user.service';
+import { MailService } from '../mail/mail.service';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 
@@ -12,6 +13,7 @@ export class AuthService {
   constructor(
     private readonly userService: UserService,
     private readonly jwtService: JwtService,
+    private readonly mailService: MailService,
   ) {}
 
   // SIGNUP
@@ -57,5 +59,47 @@ export class AuthService {
   // GET ME
   async me(userId: string) {
     return this.userService.getUserById(userId); // make sure this method exists
+  }
+
+  // Forgot password
+  async forgotPassword(email: string) {
+    const normalizedEmail = email.toLowerCase().trim();
+    const user = await this.userService.getUserByEmail(normalizedEmail);
+
+    // Prevent email enumeration
+    if (!user) {
+      return { message: 'If the email exists, a reset link was sent' };
+    }
+
+    // Generate a JWT token for password reset
+    const token = await this.jwtService.signAsync(
+      { sub: user.id },
+      { expiresIn: '15m' },
+    );
+
+    const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
+
+    await this.mailService.sendPasswordResetEmail(user.email, resetUrl);
+
+    return { message: 'If the email exists, a reset link was sent' };
+  }
+
+  // Reset password
+  async resetPassword(token: string, newPassword: string) {
+    let payload: { sub: string };
+
+    try {
+      payload = await this.jwtService.verifyAsync(token);
+    } catch {
+      throw new UnauthorizedException('Invalid or expired reset token');
+    }
+
+    const hashed = await bcrypt.hash(newPassword, 10);
+
+    await this.userService.updateUser(payload.sub, {
+      password: hashed,
+    });
+
+    return { message: 'Password updated successfully' };
   }
 }

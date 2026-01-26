@@ -69,84 +69,98 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen flex">
-      {/* LEFT SIDE — White background + Dark Green Signup Card */}
-      <div className="flex-1 flex items-center justify-center bg-white px-6">
+  <div
+    className="min-h-screen relative flex items-center justify-center px-6"
+    style={{
+      background:
+        'radial-gradient(circle at top right, #064e3b 0%, #022c22 60%)',
+    }}
+  >
+    {/* LOGO — TOP RIGHT CORNER */}
+    <div className="absolute top-6 right-8 z-10">
+      <img
+        src="/logo.png"
+        alt="Settle-Up Logo"
+        className="h-14 w-auto opacity-90"
+      />
+    </div>
+
+    <div className="flex w-full max-w-6xl items-center">
+      {/* LEFT — Signup Card */}
+      <div className="flex-1 flex justify-center">
         <div className="w-full max-w-md">
-          <AuthCard
-            title="Sign Up"
-            className="text-white p-8"
-            style={{ backgroundColor: '#064e3b' }}
-          >
-            {error && (
-              <p className="mb-4 text-center text-sm text-destructive">{error}</p>
-            )}
+          {/* Card wrapper (controls background & removes borders) */}
+          <div className="rounded-xl bg-[#064e3b] shadow-2xl">
+            <AuthCard
+              title="Sign Up"
+              className="bg-transparent border-none text-white p-8"
+            >
+              {error && (
+                <p className="mb-4 text-center text-sm text-red-300">
+                  {error}
+                </p>
+              )}
 
-            <form onSubmit={handleSignup} className="space-y-4">
-              <Input
-                name="email"
-                type="email"
-                placeholder="Email"
-                required
-                className="bg-green-100 text-green-900 placeholder-green-700 border-none focus:ring-2 focus:ring-green-400"
-              />
-              <Input
-                name="password"
-                type="password"
-                placeholder="Password"
-                required
-                className="bg-green-100 text-green-900 placeholder-green-700 border-none focus:ring-2 focus:ring-green-400"
-              />
+              <form onSubmit={handleSignup} className="space-y-4">
+                <Input
+                  name="email"
+                  type="email"
+                  placeholder="Email"
+                  required
+                  className="bg-green-100 text-green-900 placeholder-green-700 border-none focus:ring-2 focus:ring-green-400"
+                />
 
-              <Button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-green-700 hover:bg-green-600"
-                size="lg"
-              >
-                {loading ? 'Creating account...' : 'Sign Up'}
-              </Button>
+                <Input
+                  name="password"
+                  type="password"
+                  placeholder="Password"
+                  required
+                  className="bg-green-100 text-green-900 placeholder-green-700 border-none focus:ring-2 focus:ring-green-400"
+                />
 
-              <p className="mt-4 text-center text-sm text-white/70">
-                Already have an account?{' '}
-                <button
-                  type="button"
-                  onClick={() =>
-                    router.replace(
-                      `/login${inviteToken ? `?inviteToken=${inviteToken}` : ''}`
-                    )
-                  }
-                  className="text-green-400 hover:text-green-300 underline font-large"
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-green-700 hover:bg-green-600"
+                  size="lg"
                 >
-                  Log in
-                </button>
-              </p>
-            </form>
-          </AuthCard>
+                  {loading ? 'Creating account...' : 'Sign Up'}
+                </Button>
+
+                <p className="mt-4 text-center text-sm text-white/70">
+                  Already have an account?{' '}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      router.replace(
+                        `/login${
+                          inviteToken ? `?inviteToken=${inviteToken}` : ''
+                        }`
+                      )
+                    }
+                    className="text-green-300 hover:text-green-200 underline font-medium"
+                  >
+                    Log in
+                  </button>
+                </p>
+              </form>
+            </AuthCard>
+          </div>
         </div>
       </div>
 
-      {/* RIGHT SIDE — Green Gradient + Branding Text */}
-      <div
-        className="flex-1 relative flex flex-col items-center justify-center text-center px-8 text-white"
-        style={{
-          background:
-            'radial-gradient(circle at top left, #064e3b 100%)',
-        }}
-      >
-        {/* Logo at Top Right */}
-        <div className="absolute top-6 right-8">
-          <img src="/logo.png" alt="Settle-Up Logo" className="h-16 w-auto" />
-        </div>
+      {/* RIGHT — Marketing Content */}
+      <div className="flex-1 flex flex-col items-center justify-center text-center px-12 text-white">
+        <h1 className="text-5xl font-bold mb-4">
+          SPLIT. SETTLE. LIVE EASY
+        </h1>
 
-        {/* Centered Title and Subtitle */}
-        <div className="flex flex-col items-center justify-center">
-          <h1 className="text-5xl font-bold mb-4">SPLIT. SETTLE. LIVE EASY</h1>
-          <p className="text-xl text-white/80 max-w-md">
-            Sign up now and let SettleUp manage your expenses
-          </p>
-        </div>
+        <p className="text-xl text-white/80 max-w-md">
+          Sign up now and let SettleUp manage your expenses
+        </p>
       </div>
     </div>
-  );
+  </div>
+);
+
 }

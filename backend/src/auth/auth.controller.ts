@@ -15,11 +15,11 @@ import type { Response } from 'express';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private auth: AuthService) {}
+  constructor(private readonly authService: AuthService) {}
 
   @Post('signup')
   signup(@Body() body: SignupDto) {
-    return this.auth.signup(body.email, body.password);
+    return this.authService.signup(body.email, body.password);
   }
 
   @Post('login')
@@ -27,7 +27,7 @@ export class AuthController {
     @Body() body: SignupDto,
     @Res({ passthrough: true }) res: Response,
   ) {
-      const token = await this.auth.login(body.email, body.password);
+      const token = await this.authService.login(body.email, body.password);
 
       res.cookie('jwt', token, {
         httpOnly: true,
@@ -37,6 +37,11 @@ export class AuthController {
       });
 
       return { success: true };
+  }
+
+  @Post('forgot-password')
+  forgotPassword(@Body('email') email: string) {
+    return this.authService.forgotPassword(email);
   }
 
   @UseGuards(JwtAuthGuard)
