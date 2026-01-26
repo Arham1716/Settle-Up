@@ -44,6 +44,7 @@ export class MailService implements OnModuleInit {
           accessToken,
         },
       });
+      console.log('Mail transporter created:', !!this.transporter);
 
       // Optional but recommended: verify connection
       await this.transporter.verify();
@@ -131,6 +132,36 @@ export class MailService implements OnModuleInit {
       }
 
       throw new InternalServerErrorException('Failed to send support email');
+    }
+  }
+
+  // NEW — Password reset email
+  async sendPasswordResetEmail(email: string, resetUrl: string): Promise<void> {
+    if (!this.transporter) {
+      throw new ServiceUnavailableException(
+        'Email service temporarily unavailable',
+      );
+    }
+
+    try {
+      const templatePath = join(__dirname, 'templates', 'password-reset.html');
+      let html = readFileSync(templatePath, 'utf8');
+
+      html = html.replace('{{RESET_URL}}', resetUrl);
+
+      await this.transporter.sendMail({
+        from: `"SettleUp Support" <${process.env.GMAIL_USER}>`,
+        to: email,
+        subject: 'Reset your Settle-Up password',
+        html,
+      });
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        console.error('MAIL SEND ERROR:', error.message);
+      } else {
+        console.error('MAIL SEND ERROR:', error);
+      }
+      throw new InternalServerErrorException('Failed to send password reset email');
     }
   }
 }
