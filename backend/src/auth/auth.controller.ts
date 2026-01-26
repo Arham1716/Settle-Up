@@ -6,6 +6,7 @@ import {
   Get,
   Req,
   UseGuards,
+  BadRequestException,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { SignupDto } from './dto/signup.dto';
@@ -27,21 +28,35 @@ export class AuthController {
     @Body() body: SignupDto,
     @Res({ passthrough: true }) res: Response,
   ) {
-      const token = await this.authService.login(body.email, body.password);
+    const token = await this.authService.login(body.email, body.password);
 
-      res.cookie('jwt', token, {
-        httpOnly: true,
-        sameSite: 'lax',
-        secure: false,
-        path: '/',
-      });
+    res.cookie('jwt', token, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: false,
+      path: '/',
+    });
 
-      return { success: true };
+    return { success: true };
   }
 
   @Post('forgot-password')
   forgotPassword(@Body('email') email: string) {
     return this.authService.forgotPassword(email);
+  }
+
+  @Post('reset-password')
+  resetPassword(
+    @Body('token') token: string,
+    @Body('password') password: string,
+  ) {
+    if (!password || password.length < 8) {
+      throw new BadRequestException(
+        'Password must be at least 8 characters long',
+      );
+    }
+
+    return this.authService.resetPassword(token, password);
   }
 
   @UseGuards(JwtAuthGuard)

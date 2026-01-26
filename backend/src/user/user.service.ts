@@ -29,10 +29,7 @@ export class UserService {
   }
 
   // Update user after resetting password
-  async updateUser(
-    userId: string,
-    data: Partial<{ password: string }>,
-  ) {
+  async updateUser(userId: string, data: { password?: string }) {
     return this.prisma.user.update({
       where: { id: userId },
       data,

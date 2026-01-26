@@ -42,7 +42,13 @@ export default function ResetPasswordPage() {
   if (!token) return <p className="text-center mt-20 text-red-500">Invalid or missing token</p>;
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#064e3b] px-6">
+    <div
+      className="min-h-screen relative flex items-center justify-center px-6"
+      style={{
+        background:
+          'radial-gradient(circle at top right, #064e3b 0%, #022c22 60%)',
+      }}
+    >
       <div className="w-full max-w-md rounded-xl bg-[#064e3b] shadow-2xl p-8 text-white">
         <h1 className="text-2xl font-bold mb-6 text-center">Reset Password</h1>
         {message && <p className="mb-4 text-center text-red-300">{message}</p>}

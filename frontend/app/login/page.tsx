@@ -133,13 +133,13 @@ export default function LoginPage() {
                   </button>
                 </p>
                 <p className="mt-2 text-center text-sm text-white/70">
-                  Forgot your password?{' '}
+                
                   <button
                     type="button"
                     onClick={() => router.push('/forgot-password')}
                     className="text-green-300 hover:text-green-200 underline font-medium"
                   >
-                    Reset
+                    Forgot your password?
                   </button>
                 </p>
               </form>

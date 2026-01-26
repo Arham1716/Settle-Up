@@ -46,7 +46,7 @@ export class AuthService {
 
     if (!user.password) {
       throw new BadRequestException(
-        'Your account is not fully set up. Please set a password or signup again.'
+        'Your account is not fully set up. Please set a password or signup again.',
       );
     }
 
@@ -86,17 +86,37 @@ export class AuthService {
 
   // Reset password
   async resetPassword(token: string, newPassword: string) {
+    if (!newPassword || newPassword.length < 8) {
+      throw new BadRequestException(
+        'Password must be at least 8 characters long',
+      );
+    }
+
     let payload: { sub: string };
 
     try {
       payload = await this.jwtService.verifyAsync(token);
     } catch {
-      throw new UnauthorizedException('Invalid or expired reset token');
+      throw new BadRequestException('Invalid or expired reset token');
+    }
+
+    const user = await this.userService.getUserById(payload.sub);
+
+    if (!user || !user.password) {
+      throw new BadRequestException('Invalid reset request');
+    }
+
+    // Ensure new password is not the same as old password
+    const isSamePassword = await bcrypt.compare(newPassword, user.password);
+    if (isSamePassword) {
+      throw new BadRequestException(
+        'New password must be different from the previous password',
+      );
     }
 
     const hashed = await bcrypt.hash(newPassword, 10);
 
-    await this.userService.updateUser(payload.sub, {
+    await this.userService.updateUser(user.id, {
       password: hashed,
     });
 
