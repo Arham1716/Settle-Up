@@ -34,11 +34,11 @@ export default function GradientLayer({ scrollContainerId }: GradientLayerProps)
 
   return (
     <div className="pointer-events-none z-0">
-      {/* Center-left gradient - fixed to page */}
+      {/* Bottom-left gradient - fixed to page */}
       <div
-        className="fixed bottom-0 left-0 w-[500px] h-[600px]"
+        className="fixed bottom-0 left-0 w-[600px] h-[600px]"
         style={{
-          background: "radial-gradient(ellipse at bottom left, rgba(34,197,94,0.35) 0%, transparent 60%)",
+          background: "radial-gradient(ellipse at bottom left, rgba(34,197,94,0.25) 0%, transparent 55%)",
         }}
       />
 

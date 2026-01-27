@@ -46,10 +46,13 @@ export default function SettingsPage() {
   const [email, setEmail] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [accountError, setAccountError] = useState<string | null>(null);
-  const [accountSuccess, setAccountSuccess] = useState<string | null>(null);
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [accountInfoError, setAccountInfoError] = useState<string | null>(null);
+  const [accountInfoSuccess, setAccountInfoSuccess] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteAccountError, setDeleteAccountError] = useState<string | null>(null);
 
   // Preferences
   const [preferences, setPreferences] = useState<PreferencesData | null>(null);
@@ -158,8 +161,8 @@ export default function SettingsPage() {
   };
 
   const handleUpdateAccount = async () => {
-    setAccountError(null);
-    setAccountSuccess(null);
+    setAccountInfoError(null);
+    setAccountInfoSuccess(null);
 
     try {
       const res = await fetch("http://localhost:3000/settings/account", {
@@ -172,24 +175,29 @@ export default function SettingsPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to update account");
 
-      setAccountSuccess("Account updated successfully");
+      setAccountInfoSuccess("Account updated successfully");
       await fetchAccount();
     } catch (err: any) {
-      setAccountError(err.message);
+      setAccountInfoError(err.message);
     }
   };
 
   const handleChangePassword = async () => {
-    setAccountError(null);
-    setAccountSuccess(null);
+    setPasswordError(null);
+    setPasswordSuccess(null);
 
-    if (newPassword !== confirmPassword) {
-      setAccountError("New passwords do not match");
+    if (newPassword === currentPassword) {
+      setPasswordError("New password must be different from current password.");
+      return;
+    }
+    
+    if (newPassword !== confirmNewPassword) {
+      setPasswordError("New passwords do not match");
       return;
     }
 
-    if (newPassword.length < 6) {
-      setAccountError("Password must be at least 6 characters");
+    if (newPassword.length < 8) {
+      setPasswordError("Password must be at least 8 characters");
       return;
     }
 
@@ -198,22 +206,23 @@ export default function SettingsPage() {
         method: "PATCH",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ currentPassword, newPassword }),
+        body: JSON.stringify({ currentPassword, newPassword, confirmNewPassword }),
       });
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to change password");
 
-      setAccountSuccess("Password changed successfully");
+      setPasswordSuccess("Password changed successfully");
       setCurrentPassword("");
       setNewPassword("");
-      setConfirmPassword("");
+      setConfirmNewPassword("");
     } catch (err: any) {
-      setAccountError(err.message);
+      setPasswordError(err.message);
     }
   };
 
   const handleDeleteAccount = async () => {
+    setDeleteAccountError(null)
     try {
       const res = await fetch("http://localhost:3000/settings/account", {
         method: "DELETE",
@@ -224,7 +233,7 @@ export default function SettingsPage() {
 
       router.push("/login");
     } catch (err: any) {
-      setAccountError(err.message);
+      setDeleteAccountError(err.message);
     }
   };
 
@@ -332,43 +341,47 @@ export default function SettingsPage() {
         </SectionHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-6 mb-6">
-            <TabsTrigger value="account">
-              <User className="h-4 w-4 mr-2" />
-              Account
-            </TabsTrigger>
-            <TabsTrigger value="preferences">
-              <Globe className="h-4 w-4 mr-2" />
-              Preferences
-            </TabsTrigger>
-            <TabsTrigger value="groups">
-              <Users className="h-4 w-4 mr-2" />
-              Groups
-            </TabsTrigger>
-            <TabsTrigger value="notifications">
-              <Bell className="h-4 w-4 mr-2" />
-              Notifications
-            </TabsTrigger>
-            <TabsTrigger value="payments">
-              <CreditCard className="h-4 w-4 mr-2" />
-              Payments
-            </TabsTrigger>
-            <TabsTrigger value="support">
-              <HelpCircle className="h-4 w-4 mr-2" />
-              Support
-            </TabsTrigger>
-          </TabsList>
+          <TabsList className="grid w-full grid-cols-6 gap-2 mb-6">
+              {[
+                { value: "account", icon: <User className="h-4 w-4 mr-2" />, label: "Account" },
+                { value: "preferences", icon: <Globe className="h-4 w-4 mr-2" />, label: "Preferences" },
+                { value: "groups", icon: <Users className="h-4 w-4 mr-2" />, label: "Groups" },
+                { value: "notifications", icon: <Bell className="h-4 w-4 mr-2" />, label: "Notifications" },
+                { value: "payments", icon: <CreditCard className="h-4 w-4 mr-2" />, label: "Payments" },
+                { value: "support", icon: <HelpCircle className="h-4 w-4 mr-2" />, label: "Support" },
+              ].map((tab) => (
+                <TabsTrigger key={tab.value} value={tab.value} asChild>
+                  <GlossyButton
+                    hideDot
+                    inlineIcon
+                    className={`relative flex items-center justify-center w-full transition-colors ${
+                      activeTab === tab.value
+                        ? "bg-green-600 text-white shadow-lg"
+                        : "bg-white/10 text-white/80 hover:bg-white/20"
+                    }`}
+                  >
+                    {tab.icon}
+                    <span>{tab.label}</span>
+
+                    {/* Green underline only for active tab */}
+                    {activeTab === tab.value && (
+                      <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[70%] h-0.5 bg-green-400 rounded-full" />
+                    )}
+                  </GlossyButton>
+                </TabsTrigger>
+              ))}
+            </TabsList>
 
           {/* Account Settings */}
           <TabsContent value="account" className="space-y-6">
             <div className="bg-black/40 rounded-lg p-6 space-y-6">
               <h2 className="text-xl font-semibold text-white">Account Settings</h2>
 
-              {accountError && (
-                <div className="text-red-400 text-sm">{accountError}</div>
+              {accountInfoError && (
+                <div className="text-red-400 text-sm">{accountInfoError}</div>
               )}
-              {accountSuccess && (
-                <div className="text-green-400 text-sm">{accountSuccess}</div>
+              {accountInfoSuccess && (
+                <div className="text-green-400 text-sm">{accountInfoSuccess}</div>
               )}
 
               <div className="space-y-4">
@@ -403,6 +416,12 @@ export default function SettingsPage() {
 
               <div className="border-t border-white/10 pt-6 space-y-4">
                 <h3 className="text-lg font-semibold text-white">Change Password</h3>
+                {passwordError && (
+                  <div className="text-red-400 text-sm">{passwordError}</div>
+                )}
+                {passwordSuccess && (
+                  <div className="text-green-400 text-sm">{passwordSuccess}</div>
+                )}
 
                 <div>
                   <label className="block text-sm font-medium text-white/80 mb-2">
@@ -434,8 +453,8 @@ export default function SettingsPage() {
                   </label>
                   <input
                     type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    value={confirmNewPassword}
+                    onChange={(e) => setConfirmNewPassword(e.target.value)}
                     className="w-full rounded-md bg-black/40 px-3 py-2 text-white outline-none focus:ring-2 focus:ring-green-600 focus:border-green-600"
                   />
                 </div>
@@ -447,6 +466,9 @@ export default function SettingsPage() {
 
               <div className="border-t border-white/10 pt-6">
                 <h3 className="text-lg font-semibold text-red-400 mb-4">Danger Zone</h3>
+                {deleteAccountError && (
+                  <div className="text-red-400 text-sm mb-2">{deleteAccountError}</div>
+                )}
                 {!showDeleteConfirm ? (
                   <GlossyButton
                     onClick={() => setShowDeleteConfirm(true)}

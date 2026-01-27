@@ -10,6 +10,7 @@ import { InviteModule } from './invite/invite.module';
 import { ExpensesModule } from './expenses/expenses.module';
 import { DashboardModule } from "./dashboard/dashboard.module";
 import { ActivityModule } from "./activity/activity.module";
+import { SettingsModule } from './settings/settings.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { ActivityModule } from "./activity/activity.module";
     ExpensesModule,
     ActivityModule,
     DashboardModule,
+    SettingsModule
   ],
   controllers: [AppController],
   providers: [AppService],
