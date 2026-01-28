@@ -7,7 +7,12 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { UpdateGroupDto } from './dto/update-group.dto';
-import { GroupRole, GroupMember, GroupInvite, NotificationStatus } from '@prisma/client';
+import {
+  GroupRole,
+  GroupMember,
+  GroupInvite,
+  NotificationStatus,
+} from '@prisma/client';
 import { generateSecureToken } from '../common/utils/token';
 import { MailService } from '../mail/mail.service';
 import { ActivityService } from '../activity/activity.service';
@@ -50,6 +55,11 @@ export class GroupsService {
       type: 'GROUP_CREATED',
       title: `Group "${group.name}" was created`,
     });
+
+    return {
+      id: group.id,
+      name: group.name,
+    };
   }
 
   // ---------------- Get All Groups for User ----------------
@@ -134,10 +144,94 @@ export class GroupsService {
   }
 
   // ---------------- Soft Delete Group ----------------
-  async remove(groupId: string) {
-    return this.prisma.group.update({
+  async remove(groupId: string, actorId: string) {
+    // Optional: ensure no outstanding balances
+    const expenses = await this.prisma.expense.aggregate({
+      where: { groupId },
+      _sum: { amount: true },
+    });
+
+    const total = Number(expenses._sum.amount ?? 0);
+
+    if (total > 0) {
+      throw new BadRequestException(
+        'Settle all balances before deleting the group',
+      );
+    }
+
+    const members = await this.prisma.groupMember.findMany({
+      where: {
+        groupId,
+        leftAt: null,
+      },
+      select: { userId: true },
+    });
+
+    const group = await this.prisma.group.update({
       where: { id: groupId },
       data: { deletedAt: new Date() },
+    });
+
+    await this.activityService.logGroupActivity({
+      actorId,
+      groupId,
+      type: ActivityType.GROUP_DELETED,
+      title: `Group "${group.name}" was deleted`,
+      recipients: members.map((m) => m.userId),
+    });
+  }
+
+  // ---------------- Group Leave Member ----------------
+  async leaveGroup(groupId: string, userId: string) {
+    const membership = await this.prisma.groupMember.findUnique({
+      where: { userId_groupId: { userId, groupId } },
+    });
+
+    if (!membership || membership.leftAt) {
+      throw new NotFoundException('You are not part of this group');
+    }
+
+    // Prevent last admin from leaving
+    if (membership.role === GroupRole.ADMIN) {
+      const adminCount = await this.prisma.groupMember.count({
+        where: {
+          groupId,
+          role: GroupRole.ADMIN,
+          leftAt: null,
+        },
+      });
+
+      if (adminCount === 1) {
+        throw new BadRequestException(
+          'Transfer admin role before leaving the group',
+        );
+      }
+    }
+
+    const activeMembers = await this.prisma.groupMember.findMany({
+      where: {
+        groupId,
+        leftAt: null,
+      },
+      select: { userId: true },
+    });
+
+    await this.activityService.logGroupActivity({
+      actorId: userId,
+      groupId,
+      type: ActivityType.MEMBER_LEFT,
+      title: `A member left the group`,
+      metadata: {
+        leftUserId: userId,
+      },
+      recipients: activeMembers
+        .map((m) => m.userId)
+        .filter((id) => id !== userId), // don't notify the leaver
+    });
+
+    return this.prisma.groupMember.update({
+      where: { id: membership.id },
+      data: { leftAt: new Date() },
     });
   }
 

@@ -6,6 +6,7 @@ import {
   Pencil,
   Trash2,
   Bell,
+  LucideTrash2,
 } from "lucide-react";
 
 function ActivityIcon({ type }: { type: string }) {
@@ -15,11 +16,17 @@ function ActivityIcon({ type }: { type: string }) {
     case "GROUP_CREATED":
       return <Users className={className} />;
 
+    case "GROUP_DELETED":
+      return <Trash2 className={className} />;
+
     case "MEMBER_ADDED":
       return <UserPlus className={className} />;
 
     case "MEMBER_REMOVED":
       return <UserMinus className={className} />;
+
+    case "MEMBER_LEFT":
+      return <Trash2 className={className} />;
 
     case "EXPENSE_ADDED":
       return <Receipt className={className} />;

@@ -5,7 +5,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { ActivityType } from "@prisma/client";
+import { ActivityType } from '@prisma/client';
 import { ActivityService } from '../activity/activity.service';
 import { CreateExpenseDto } from './dto/create-expense.dto';
 import { UpdateExpenseDto } from './dto/update-expense.dto';
@@ -308,7 +308,7 @@ export class ExpensesService {
     //log activity
     await this.activityService.logGroupActivity({
       actorId: userId,
-      groupId: expense.groupId, 
+      groupId: expense.groupId,
       type: ActivityType.EXPENSE_DELETED,
       title: `Expense deleted`,
       metadata: {
@@ -781,10 +781,12 @@ export class ExpensesService {
         group,
         amount: Number(amount),
       })),
-      monthlyExpenses: Array.from(monthlyData.entries()).map(([month, amount]) => ({
+      monthlyExpenses: Array.from(monthlyData.entries()).map(
+        ([month, amount]) => ({
           month,
           amount: Number(amount),
-      })),
+        }),
+      ),
       paymentsDone,
       paymentsDue,
       totalExpenses: expenses.reduce((sum, e) => sum + Number(e.amount), 0),
