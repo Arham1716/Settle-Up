@@ -62,6 +62,21 @@ export default function GroupPage() {
   const [splitError, setSplitError] = useState<string | null>(null);
   const [splitting, setSplitting] = useState(false);
 
+  //Admin leaving group
+  const [showAdminLeaveModal, setShowAdminLeaveModal] = useState(false);
+  const [selectedAdmin, setSelectedAdmin] = useState<Member | null>(null);
+  const [confirmAdmin, setConfirmAdmin] = useState(false);
+  const [adminLeaveError, setAdminLeaveError] = useState<string | null>(null);
+  
+  //Member leaving group
+  const [showMemberLeaveModal, setShowMemberLeaveModal] = useState(false);
+  const [memberLeaveError, setMemberLeaveError] = useState<string | null>(null);
+  const [memberLeaving, setMemberLeaving] = useState(false);
+
+  //Delete group
+  const [deleteGroupOpen, setDeleteGroupOpen] = useState(false);
+  const [isDeletingGroup, setIsDeletingGroup] = useState(false);
+
   const isAdmin = group?.currentUserRole === "ADMIN";
 
   // ---------------- Fetch Group ----------------
@@ -251,8 +266,14 @@ export default function GroupPage() {
   };
 
   // ---------------- Delete Group -----------------
-  const handleDeleteGroup = async () => {
-    if (!confirm("This will permanently delete the group. Continue?")) return;
+  // Opens modal only
+  const handleDeleteGroupClick = () => {
+    setDeleteGroupOpen(true);
+  };
+
+  // Actually deletes after confirmation
+  const handleConfirmDeleteGroup = async () => {
+    setIsDeletingGroup(true);
 
     try {
       const res = await fetch(
@@ -265,18 +286,22 @@ export default function GroupPage() {
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.message);
+        throw new Error(data.message || "Failed to delete group");
       }
 
-      router.push("/dashboard"); // redirect after deletion
+      router.push("/dashboard");
     } catch (err: any) {
       alert(err.message);
+    } finally {
+      setIsDeletingGroup(false);
+      setDeleteGroupOpen(false);
     }
   };
 
   // ---------------- Group Leave Member -----------------
   const handleLeaveGroup = async () => {
-    if (!confirm("Are you sure you want to leave this group?")) return;
+    setMemberLeaving(true);
+    setMemberLeaveError(null);
 
     try {
       const res = await fetch(
@@ -289,12 +314,14 @@ export default function GroupPage() {
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.message);
+        throw new Error(data.message || "Cannot leave group");
       }
 
       router.push("/dashboard");
     } catch (err: any) {
-      alert(err.message);
+      setMemberLeaveError(err.message);
+    } finally {
+      setMemberLeaving(false);
     }
   };
 
@@ -343,49 +370,64 @@ export default function GroupPage() {
           <div className="space-y-3 mb-6">
             <h2 className="text-lg font-semibold text-white">Members</h2>
             <ul className="space-y-2">
-              {group.members.map((member) => (
-                <li
-                  key={member.id}
-                  className="rounded-md bg-black/40 p-3 flex justify-between items-center text-white"
-                >
-                  <div className="flex-1">
-                    <div>
-                      {member.name}
-                      {member.role === "ADMIN" && (
-                        <span className="ml-2 text-sm text-green-400">(Admin)</span>
+              {group.members.map((member) => {
+                const balance = getMemberBalance(member.id);
+
+                const balanceNode = (() => {
+                  if (balance > 0) {
+                    return <span className="text-red-400">Owes: {balance.toFixed(2)}</span>;
+                  }
+                  if (balance < 0) {
+                    return <span className="text-green-400">Owed: {Math.abs(balance).toFixed(2)}</span>;
+                  }
+                  return <span className="text-white/60">Settled</span>;
+                })();
+
+                return (
+                  <li
+                    key={member.id}
+                    className="rounded-md bg-black/40 p-3 flex justify-between items-center text-white"
+                  >
+                    <div className="flex-1">
+                      <div>
+                        {member.name}
+                        {member.role === "ADMIN" && (
+                          <span className="ml-2 text-sm text-green-400">(Admin)</span>
+                        )}
+                      </div>
+                      <div className="text-sm text-white/60">
+                        {member.email}
+                      </div>
+                      {isAdmin && memberBalances.length > 0 && (
+                        <div className="text-sm mt-1">
+                          {balanceNode}
+                        </div>
                       )}
                     </div>
-                    <div className="text-sm text-white/60">
-                      {member.email}
-                    </div>
-                    {memberBalances.length > 0 && (
-                      <div className="text-sm mt-1">
-                        {(() => {
-                          const balance = getMemberBalance(member.id);
-                          if (balance > 0) {
-                            return <span className="text-red-400">Owes: {balance.toFixed(2)}</span>;
-                          } else if (balance < 0) {
-                            return <span className="text-green-400">Owed: {Math.abs(balance).toFixed(2)}</span>;
-                          } else {
-                            return <span className="text-white/60">Settled</span>;
-                          }
-                        })()}
-                      </div>
-                    )}
-                  </div>
 
-                  {isAdmin && member.role !== "ADMIN" && (
-                    <GlossyButton
-                      onClick={() => handleRemoveMember(member.id)}
-                      disabled={removingUserId === member.id}
-                    >
-                      {removingUserId === member.id
-                        ? "Removing..."
-                        : "Remove Member"}
-                    </GlossyButton>
-                  )}
-                </li>
-              ))}
+                    <div className="min-w-[140px] flex justify-end">
+                    {isAdmin ? (
+                      member.role !== "ADMIN" && (
+                        <GlossyButton
+                          onClick={() => handleRemoveMember(member.id)}
+                          disabled={removingUserId === member.id}
+                        >
+                          {removingUserId === member.id
+                            ? "Removing..."
+                            : "Remove Member"}
+                        </GlossyButton>
+                      )
+                      ) : (
+                        memberBalances.length > 0 && (
+                          <div className="text-sm">
+                            {balanceNode}
+                          </div>
+                        )
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           </div>
 
@@ -437,27 +479,222 @@ export default function GroupPage() {
                 </GlossyButton>
               )}
 
-              {!isAdmin && (
-                <GlossyButton
-                  className="mt-6 text-yellow-400"
-                  onClick={handleLeaveGroup}
-                >
-                  Exit Group
-                </GlossyButton>
-              )}
+              <GlossyButton
+                className={`mt-6 ${isAdmin ? 'text-yellow-300' : 'text-yellow-400'}`}
+                onClick={() => {
+                  if (isAdmin) {
+                    setShowAdminLeaveModal(true);
+                  } else {
+                    setShowMemberLeaveModal(true);
+                  }
+                }}
+              >
+                Leave Group
+              </GlossyButton>
 
               {isAdmin && (
                 <GlossyButton
                   className="mt-6 text-red-400"
-                  onClick={handleDeleteGroup}
+                  onClick={handleDeleteGroupClick}
                 >
                   Delete Group
                 </GlossyButton>
               )}
 
+              {/*Admin leaving modal*/}
+              {showAdminLeaveModal && (
+                <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center">
+                  <div className="bg-zinc-900 p-6 rounded-lg w-full max-w-md text-white">
+                    <h3 className="text-lg font-semibold mb-4">
+                      Select a new admin
+                    </h3>
+
+                    <ul className="space-y-2">
+                      {group.members
+                        .filter((m) => m.role !== "ADMIN")
+                        .map((member) => (
+                          <li
+                            key={member.id}
+                            className="p-3 rounded-md bg-black/40 cursor-pointer hover:bg-black/60"
+                            onClick={() => {
+                              setSelectedAdmin(member);
+                              setConfirmAdmin(true);
+                              setShowAdminLeaveModal(false);
+                            }}
+                          >
+                            {member.name} ({member.email})
+                          </li>
+                        ))}
+                    </ul>
+
+                    <GlossyButton
+                      className="mt-4 w-full"
+                      onClick={() => setShowAdminLeaveModal(false)}
+                    >
+                      Cancel
+                    </GlossyButton>
+                  </div>
+                </div>
+              )}
+
+              {/* Confirm Admin Leave Modal */}
+              {confirmAdmin && selectedAdmin && (
+                <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center">
+                  <div className="bg-zinc-900 p-6 rounded-lg w-full max-w-md text-white">
+                    {adminLeaveError ? (
+                      <>
+                        {/* Only show the error */}
+                        <p className="text-sm text-red-400 mb-6">{adminLeaveError}</p>
+                        <GlossyButton
+                          className="w-full"
+                          onClick={() => {
+                            setAdminLeaveError(null);
+                            setConfirmAdmin(false);
+                          }}
+                        >
+                          OK
+                        </GlossyButton>
+                      </>
+                    ) : (
+                      <>
+                        {/* Normal confirmation text */}
+                        <h3 className="text-lg font-semibold mb-4">Are you sure?</h3>
+                        <p className="mb-6">
+                          Are you sure you want <b>{selectedAdmin.name}</b> to be the admin?
+                        </p>
+
+                        <div className="flex gap-2">
+                          <GlossyButton
+                            className="flex-1 text-red-400"
+                            onClick={async () => {
+                              if (!selectedAdmin) return;
+
+                              setAdminLeaveError(null); // reset previous error
+
+                              try {
+                                const res = await fetch(
+                                  `http://localhost:3000/groups/${groupId}/leave-as-admin`,
+                                  {
+                                    method: "POST",
+                                    credentials: "include",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ newAdminUserId: selectedAdmin.id }),
+                                  }
+                                );
+
+                                if (!res.ok) {
+                                  const data = await res.json();
+                                  throw new Error(data.message || "Cannot leave as admin");
+                                }
+
+                                router.push("/dashboard");
+                              } catch (err: any) {
+                                setAdminLeaveError(err.message); // show backend error in modal
+                              }
+                            }}
+                          >
+                            Yes
+                          </GlossyButton>
+
+                          <GlossyButton
+                            className="flex-1"
+                            onClick={() => {
+                              setConfirmAdmin(false);
+                              setShowAdminLeaveModal(true);
+                            }}
+                          >
+                            No
+                          </GlossyButton>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+
             </div>
           </div>
         </section>
+
+        {/* Delete Group Modal*/}
+        {deleteGroupOpen && (
+          <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center">
+            <div className="bg-zinc-900 p-6 rounded-lg w-full max-w-md text-white">
+              <h3 className="text-lg font-semibold mb-4 text-red-400">
+                Delete group?
+              </h3>
+
+              <p className="mb-6 text-sm text-white/80">
+                This action is permanent. All members, expenses, and balances
+                will be permanently deleted.
+              </p>
+
+              <div className="flex gap-2">
+                <GlossyButton
+                  className="flex-1 text-red-400"
+                  disabled={isDeletingGroup}
+                  onClick={handleConfirmDeleteGroup}
+                >
+                  {isDeletingGroup ? "Deleting..." : "Delete Group"}
+                </GlossyButton>
+                <GlossyButton
+                  className="flex-1"
+                  disabled={isDeletingGroup}
+                  onClick={() => setDeleteGroupOpen(false)}
+                >
+                  Cancel
+                </GlossyButton>
+
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Confirm Member Leave Modal */}
+        {showMemberLeaveModal && (
+          <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center">
+            <div className="bg-zinc-900 p-6 rounded-lg w-full max-w-md text-white">
+              {memberLeaveError ? (
+                <>
+                  <p className="text-sm text-red-400 mb-6">{memberLeaveError}</p>
+                  <GlossyButton
+                    className="w-full"
+                    onClick={() => {
+                      setMemberLeaveError(null);
+                      setShowMemberLeaveModal(false);
+                    }}
+                  >
+                    OK
+                  </GlossyButton>
+                </>
+              ) : (
+                <>
+                  <h3 className="text-lg font-semibold mb-4">Are you sure?</h3>
+                  <p className="mb-6">
+                    Are you sure you want to leave this group?
+                  </p>
+
+                  <div className="flex gap-2">
+                    <GlossyButton
+                      className="flex-1 text-red-400"
+                      disabled={memberLeaving}
+                      onClick={handleLeaveGroup}
+                    >
+                      {memberLeaving ? "Leaving..." : "Yes"}
+                    </GlossyButton>
+
+                    <GlossyButton
+                      className="flex-1"
+                      onClick={() => setShowMemberLeaveModal(false)}
+                    >
+                      No
+                    </GlossyButton>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Split Balance Modal */}
         {showSplitModal && isAdmin && (

@@ -10,10 +10,12 @@ interface GlossyButtonProps
   variant?: "primary" | "secondary"
   size?: "default" | "lg"
   asChild?: boolean
+  hideDot?: boolean
+  inlineIcon?: boolean  // <-- new prop
 }
 
 const GlossyButton = React.forwardRef<HTMLButtonElement, GlossyButtonProps>(
-  ({ className, children, variant = "primary", size = "default", ...props }, ref) => {
+  ({ className, children, variant = "primary", size = "default", hideDot, inlineIcon, ...props }, ref) => {
     return (
       <motion.button
         ref={ref}
@@ -30,13 +32,20 @@ const GlossyButton = React.forwardRef<HTMLButtonElement, GlossyButtonProps>(
         )}
         {...props}
       >
-        <span className="text-white">{children}</span>
-        {/* White dot indicator */}
-        <span className="ml-1 inline-flex h-2.5 w-2.5 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.5)]" />
+        {inlineIcon ? (
+          <span className="inline-flex items-center text-white">{children}</span>
+        ) : (
+          <span className="text-white">{children}</span>
+        )}
+
+        {!hideDot && (
+          <span className="ml-1 inline-flex h-2.5 w-2.5 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.5)]" />
+        )}
       </motion.button>
     )
-  },
+  }
 )
+
 GlossyButton.displayName = "GlossyButton"
 
 export { GlossyButton }

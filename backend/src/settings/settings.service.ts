@@ -409,4 +409,3 @@ ${dto.description}
     return { message: 'Bug report submitted successfully' };
   }
 }
-

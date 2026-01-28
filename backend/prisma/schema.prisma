@@ -178,6 +178,7 @@ enum ActivityType {
   EXPENSE_ADDED
   EXPENSE_UPDATED
   EXPENSE_DELETED
+  ADMIN_TRANSFERRED
 }
 
 generator client {
