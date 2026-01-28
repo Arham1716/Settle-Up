@@ -180,7 +180,7 @@ export default function GroupPage() {
     }
   };
 
-  // ---------------- Remove Member ----------------
+  // ---------------- Remove Member -----------------
   const handleRemoveMember = async (userId: string) => {
     try {
       setRemovingUserId(userId);
@@ -207,7 +207,7 @@ export default function GroupPage() {
     }
   };
 
-  // Handle split balance
+  // ---------------- Handle Split bBalance -----------------
   const handleSplitBalance = async () => {
     if (!groupId || !balance) return;
 
@@ -250,7 +250,55 @@ export default function GroupPage() {
     }
   };
 
-  // Get member balance
+  // ---------------- Delete Group -----------------
+  const handleDeleteGroup = async () => {
+    if (!confirm("This will permanently delete the group. Continue?")) return;
+
+    try {
+      const res = await fetch(
+        `http://localhost:3000/groups/${groupId}`,
+        {
+          method: "DELETE",
+          credentials: "include",
+        }
+      );
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message);
+      }
+
+      router.push("/dashboard"); // redirect after deletion
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
+  // ---------------- Group Leave Member -----------------
+  const handleLeaveGroup = async () => {
+    if (!confirm("Are you sure you want to leave this group?")) return;
+
+    try {
+      const res = await fetch(
+        `http://localhost:3000/groups/${groupId}/leave`,
+        {
+          method: "DELETE",
+          credentials: "include",
+        }
+      );
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message);
+      }
+
+      router.push("/dashboard");
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
+  // ---------------- Get Member Balance -----------------
   const getMemberBalance = (memberId: string) => {
     const memberBalance = memberBalances.find((mb) => mb.userId === memberId);
     return memberBalance?.balance || 0;
@@ -388,6 +436,25 @@ export default function GroupPage() {
                   </span>
                 </GlossyButton>
               )}
+
+              {!isAdmin && (
+                <GlossyButton
+                  className="mt-6 text-yellow-400"
+                  onClick={handleLeaveGroup}
+                >
+                  Exit Group
+                </GlossyButton>
+              )}
+
+              {isAdmin && (
+                <GlossyButton
+                  className="mt-6 text-red-400"
+                  onClick={handleDeleteGroup}
+                >
+                  Delete Group
+                </GlossyButton>
+              )}
+
             </div>
           </div>
         </section>

@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { GlossyCardButton } from "@/components/ui/glossy-card-button";
 import { ActivityIcon } from "@/components/ui/icons";
-import GradientLayer from "@/components/ui/gradients"; // adjust path as needed
 
 type Activity = {
   id: string;

@@ -50,10 +50,18 @@ export class GroupsController {
     return this.groupsService.update(id, dto);
   }
 
+  //Group deletion option for Admin only
   @Delete(':id')
   @UseGuards(GroupAdminGuard)
-  remove(@Param('id') id: string) {
-    return this.groupsService.remove(id);
+  remove(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
+    return this.groupsService.remove(id, req.user.id);
+  }
+
+  //Leave group (members)
+  @Delete(':id/leave')
+  @UseGuards(GroupMemberGuard)
+  leaveGroup(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
+    return this.groupsService.leaveGroup(id, req.user.id);
   }
 
   // Member management
