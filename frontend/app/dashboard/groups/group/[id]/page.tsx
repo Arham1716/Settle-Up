@@ -62,6 +62,12 @@ export default function GroupPage() {
   const [splitError, setSplitError] = useState<string | null>(null);
   const [splitting, setSplitting] = useState(false);
 
+  //Admin leaving group
+  const [showAdminLeaveModal, setShowAdminLeaveModal] = useState(false);
+  const [selectedAdmin, setSelectedAdmin] = useState<Member | null>(null);
+  const [confirmAdmin, setConfirmAdmin] = useState(false);
+  const [adminLeaveError, setAdminLeaveError] = useState<string | null>(null);
+
   const isAdmin = group?.currentUserRole === "ADMIN";
 
   // ---------------- Fetch Group ----------------
@@ -437,14 +443,18 @@ export default function GroupPage() {
                 </GlossyButton>
               )}
 
-              {!isAdmin && (
-                <GlossyButton
-                  className="mt-6 text-yellow-400"
-                  onClick={handleLeaveGroup}
-                >
-                  Exit Group
-                </GlossyButton>
-              )}
+              <GlossyButton
+                className={`mt-6 ${isAdmin ? 'text-yellow-300' : 'text-yellow-400'}`}
+                onClick={() => {
+                  if (isAdmin) {
+                    setShowAdminLeaveModal(true);
+                  } else {
+                    handleLeaveGroup();
+                  }
+                }}
+              >
+                Exit Group
+              </GlossyButton>
 
               {isAdmin && (
                 <GlossyButton
@@ -454,6 +464,118 @@ export default function GroupPage() {
                   Delete Group
                 </GlossyButton>
               )}
+
+              {/*Admin leaving modal*/}
+              {showAdminLeaveModal && (
+                <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center">
+                  <div className="bg-zinc-900 p-6 rounded-lg w-full max-w-md text-white">
+                    <h3 className="text-lg font-semibold mb-4">
+                      Select a new admin
+                    </h3>
+
+                    <ul className="space-y-2">
+                      {group.members
+                        .filter((m) => m.role !== "ADMIN")
+                        .map((member) => (
+                          <li
+                            key={member.id}
+                            className="p-3 rounded-md bg-black/40 cursor-pointer hover:bg-black/60"
+                            onClick={() => {
+                              setSelectedAdmin(member);
+                              setConfirmAdmin(true);
+                              setShowAdminLeaveModal(false);
+                            }}
+                          >
+                            {member.name} ({member.email})
+                          </li>
+                        ))}
+                    </ul>
+
+                    <GlossyButton
+                      className="mt-4 w-full"
+                      onClick={() => setShowAdminLeaveModal(false)}
+                    >
+                      Cancel
+                    </GlossyButton>
+                  </div>
+                </div>
+              )}
+
+              {/* Confirm Admin Leave Modal */}
+              {/* Confirm Admin Leave Modal */}
+{confirmAdmin && selectedAdmin && (
+  <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center">
+    <div className="bg-zinc-900 p-6 rounded-lg w-full max-w-md text-white">
+      {adminLeaveError ? (
+        <>
+          {/* Only show the error */}
+          <p className="text-sm text-red-400 mb-6">{adminLeaveError}</p>
+          <GlossyButton
+            className="w-full"
+            onClick={() => {
+              setAdminLeaveError(null);
+              setConfirmAdmin(false);
+            }}
+          >
+            OK
+          </GlossyButton>
+        </>
+      ) : (
+        <>
+          {/* Normal confirmation text */}
+          <h3 className="text-lg font-semibold mb-4">Are you sure?</h3>
+          <p className="mb-6">
+            Are you sure you want <b>{selectedAdmin.name}</b> to be the admin?
+          </p>
+
+          <div className="flex gap-2">
+            <GlossyButton
+              className="flex-1 text-red-400"
+              onClick={async () => {
+                if (!selectedAdmin) return;
+
+                setAdminLeaveError(null); // reset previous error
+
+                try {
+                  const res = await fetch(
+                    `http://localhost:3000/groups/${groupId}/leave-as-admin`,
+                    {
+                      method: "POST",
+                      credentials: "include",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ newAdminUserId: selectedAdmin.id }),
+                    }
+                  );
+
+                  if (!res.ok) {
+                    const data = await res.json();
+                    throw new Error(data.message || "Cannot leave as admin");
+                  }
+
+                  router.push("/dashboard");
+                } catch (err: any) {
+                  setAdminLeaveError(err.message); // show backend error in modal
+                }
+              }}
+            >
+              Yes
+            </GlossyButton>
+
+            <GlossyButton
+              className="flex-1"
+              onClick={() => {
+                setConfirmAdmin(false);
+                setShowAdminLeaveModal(true);
+              }}
+            >
+              No
+            </GlossyButton>
+          </div>
+        </>
+      )}
+    </div>
+  </div>
+)}
 
             </div>
           </div>

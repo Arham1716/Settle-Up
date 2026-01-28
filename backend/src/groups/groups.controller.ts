@@ -64,6 +64,21 @@ export class GroupsController {
     return this.groupsService.leaveGroup(id, req.user.id);
   }
 
+  //Leaving group (admin)
+  @Post(':id/leave-as-admin')
+  @UseGuards(GroupAdminGuard)
+  leaveAsAdmin(
+    @Param('id') groupId: string,
+    @Body('newAdminUserId') newAdminUserId: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return this.groupsService.leaveAsAdmin(
+      groupId,
+      req.user.id,
+      newAdminUserId,
+    );
+  }
+
   // Member management
   @Post(':id/members')
   @UseGuards(GroupAdminGuard)

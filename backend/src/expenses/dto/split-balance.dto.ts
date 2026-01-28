@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsEnum, IsObject, ValidateNested } from 'class-validator';
+import { IsString, IsNotEmpty, IsEnum, ValidateNested, IsOptional, IsArray, ArrayNotEmpty } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export enum SplitType {
@@ -19,10 +19,10 @@ export class SplitBalanceDto {
   @IsEnum(SplitType)
   splitType: SplitType;
 
-  @IsObject()
+  @IsOptional()
+  @IsArray()
+  @ArrayNotEmpty({ message: 'memberSplits cannot be empty when provided' })
   @ValidateNested({ each: true })
   @Type(() => MemberSplit)
-  memberSplits?: MemberSplit[]; // Required for UNEQUAL, optional for EQUAL
+  memberSplits?: MemberSplit[]; // Required only for UNEQUAL
 }
-
-
