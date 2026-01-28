@@ -191,6 +191,9 @@ export class GroupsService {
       throw new NotFoundException('You are not part of this group');
     }
 
+    //Block group exit if expenses are not settled
+    await this.ensureNoPendingExpenses(groupId);
+
     // Prevent last admin from leaving
     if (membership.role === GroupRole.ADMIN) {
       const adminCount = await this.prisma.groupMember.count({
@@ -209,10 +212,7 @@ export class GroupsService {
     }
 
     const activeMembers = await this.prisma.groupMember.findMany({
-      where: {
-        groupId,
-        leftAt: null,
-      },
+      where: { groupId, leftAt: null },
       select: { userId: true },
     });
 
@@ -221,12 +221,10 @@ export class GroupsService {
       groupId,
       type: ActivityType.MEMBER_LEFT,
       title: `A member left the group`,
-      metadata: {
-        leftUserId: userId,
-      },
+      metadata: { leftUserId: userId },
       recipients: activeMembers
         .map((m) => m.userId)
-        .filter((id) => id !== userId), // don't notify the leaver
+        .filter((id) => id !== userId),
     });
 
     return this.prisma.groupMember.update({
@@ -236,13 +234,20 @@ export class GroupsService {
   }
 
   // ---------------- Check if Admin Can Leave ----------------
-  async canAdminLeave(groupId: string, adminUserId: string): Promise<{ canLeave: boolean; reason?: string }> {
+  async canAdminLeave(
+    groupId: string,
+    adminUserId: string,
+  ): Promise<{ canLeave: boolean; reason?: string }> {
     // Verify admin membership
     const membership = await this.prisma.groupMember.findUnique({
       where: { userId_groupId: { userId: adminUserId, groupId } },
     });
 
-    if (!membership || membership.leftAt !== null || membership.role !== GroupRole.ADMIN) {
+    if (
+      !membership ||
+      membership.leftAt !== null ||
+      membership.role !== GroupRole.ADMIN
+    ) {
       return { canLeave: false, reason: 'User is not an active admin' };
     }
 
@@ -253,7 +258,10 @@ export class GroupsService {
     });
 
     if (Number(totalPending._sum.amount ?? 0) > 0) {
-      return { canLeave: false, reason: 'There are pending expenses in this group' };
+      return {
+        canLeave: false,
+        reason: 'There are pending expenses in this group',
+      };
     }
 
     // Check if this is the last admin
@@ -267,7 +275,6 @@ export class GroupsService {
 
     return { canLeave: true };
   }
-
 
   // ---------------- Leaving group as an Admin ----------------
   async leaveAsAdmin(
@@ -293,18 +300,7 @@ export class GroupsService {
     }
 
     // Step 1: Check for any pending balances in the group
-    const unsettledSplits = await this.prisma.balanceSplit.findFirst({
-      where: {
-        groupId,
-        amount: { not: 0 }, // any non-zero split indicates pending balance
-      },
-    });
-
-    if (unsettledSplits) {
-      throw new BadRequestException(
-        'Cannot leave the group. There are pending expenses that must be settled first.',
-      );
-    }
+    await this.ensureNoPendingExpenses(groupId);
 
     // Step 2: Validate new admin
     const newAdminMembership = await this.prisma.groupMember.findUnique({
@@ -345,6 +341,23 @@ export class GroupsService {
 
       return { success: true };
     });
+  }
+
+  // ---------------- Check outstanding expenses ----------------
+
+  private async ensureNoPendingExpenses(groupId: string) {
+    const unsettledSplits = await this.prisma.balanceSplit.findFirst({
+      where: {
+        groupId,
+        amount: { not: 0 },
+      },
+    });
+
+    if (unsettledSplits) {
+      throw new BadRequestException(
+        'Cannot leave the group. There are pending expenses that must be settled first.',
+      );
+    }
   }
 
   // ---------------- Add Member ----------------
