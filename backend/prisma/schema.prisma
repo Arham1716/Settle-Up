@@ -181,6 +181,15 @@ enum ActivityType {
   ADMIN_TRANSFERRED
 }
 
+model DeviceToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  platform  String   // "web", "android", "ios"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 generator client {
   provider = "prisma-client-js"
 }
