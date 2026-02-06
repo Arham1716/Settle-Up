@@ -1,63 +1,55 @@
 "use client";
 
 import { useEffect } from "react";
-import { messaging } from "@/lib/firebase";
-import { getToken, onMessage } from "firebase/messaging";
+import { getMessaging, getToken, onMessage, MessagePayload } from "firebase/messaging";
+import { firebaseApp } from "../lib/firebase";
 
-import { Header } from "@/components/landing/header";
-import { HeroSection } from "@/components/landing/hero-section";
-import { FeaturesSection } from "@/components/landing/features-section";
-import { HowItWorks } from "@/components/landing/how-it-works";
-import { FAQSection } from "@/components/landing/faq-section";
-import { Footer } from "@/components/landing/footer";
-
-export default function HomePage() {
+export function useFcmNotifications() {
   useEffect(() => {
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker
-        .register("/firebase-messaging-sw.js")
-        .then(async (registration) => {
-          console.log("Service Worker registered with scope:", registration.scope);
+    if (typeof window === "undefined") return;
+    if (!("serviceWorker" in navigator)) return;
 
-          // Request permission to send notifications
-          const permission = await Notification.requestPermission();
-          if (permission === "granted") {
-            try {
-              const token = await getToken(messaging, {
-                vapidKey: "YOUR_VAPID_KEY", // get this from Firebase Console
-                serviceWorkerRegistration: registration,
-              });
-              console.log("FCM Device Token:", token);
+    const messaging = getMessaging(firebaseApp);
 
-              // TODO: send this token to your backend API to save in DB
-              // await fetch("/api/save-device-token", { method: "POST", body: JSON.stringify({ token }) });
+    // Register service worker & get FCM token
+    navigator.serviceWorker
+      .register("/firebase-messaging-sw.js")
+      .then(async (registration) => {
+        const permission = await Notification.requestPermission();
+        if (permission !== "granted") return;
 
-            } catch (err) {
-              console.error("Error getting FCM token:", err);
-            }
-          } else {
-            console.log("Notification permission denied");
-          }
-        })
-        .catch((err) => console.error("Service Worker registration failed:", err));
-    }
+        // Get FCM device token
+        const fcmToken = await getToken(messaging, {
+          vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY!,
+          serviceWorkerRegistration: registration,
+        });
 
-    // Listen to foreground messages (when app is open)
-    onMessage(messaging, (payload) => {
-      console.log("Foreground message received:", payload);
-      // You can show a custom in-app notification here
-      alert(`Notification: ${payload.notification?.title} - ${payload.notification?.body}`);
+        if (!fcmToken) return;
+        console.log("FCM Device Token:", fcmToken);
+
+        // Send FCM token to backend (cookie-based JWT auth)
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/device-token`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include", // <-- automatically send JWT cookie
+          body: JSON.stringify({ token: fcmToken, platform: "web" }),
+        });
+      })
+      .catch(console.error);
+
+    // Foreground messages (active tab)
+    const unsubscribe = onMessage(messaging, (payload: MessagePayload) => {
+      console.log("Foreground FCM message received:", payload);
+
+      const title = payload.notification?.title ?? "Notification";
+      const body = payload.notification?.body ?? "";
+
+      if (Notification.permission === "granted") {
+        // Show native system notification
+        new Notification(title, { body, icon: "/icon.png" });
+      }
     });
-  }, []);
 
-  return (
-    <main className="min-h-screen">
-      <Header />
-      <HeroSection />
-      <FeaturesSection />
-      <HowItWorks />
-      <FAQSection />
-      <Footer />
-    </main>
-  );
+    return () => unsubscribe();
+  }, []);
 }

@@ -2,16 +2,19 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ActivityType, Prisma } from '@prisma/client';
 import { FirebaseService } from '../firebase/firebase.service';
+import { DeviceTokenService } from '../device-token/device-token.service';
 
 @Injectable()
 export class ActivityService {
-  private logger = new Logger(ActivityService.name);
+  private readonly logger = new Logger(ActivityService.name);
 
   constructor(
-    private prisma: PrismaService,
-    private firebaseService: FirebaseService,
+    private readonly prisma: PrismaService,
+    private readonly firebaseService: FirebaseService,
+    private readonly deviceTokenService: DeviceTokenService,
   ) {}
 
+  // ---------------- Get User Activity ----------------
   async getUserActivity(userId: string) {
     return this.prisma.activity.findMany({
       where: { userId },
@@ -24,6 +27,7 @@ export class ActivityService {
     });
   }
 
+  // ---------------- Log Group Activity + Push ----------------
   async logGroupActivity(params: {
     actorId: string;
     groupId: string;
@@ -32,10 +36,11 @@ export class ActivityService {
     metadata?: Prisma.InputJsonValue;
     recipients?: string[];
     excludeActor?: boolean;
-  }) {
+  }): Promise<void> {
     // 1️⃣ Determine recipients
     let recipients: string[];
-    if (params.recipients) {
+
+    if (params.recipients?.length) {
       recipients = params.recipients;
     } else {
       const memberIds = await this.getActiveGroupMemberIds(params.groupId);
@@ -46,7 +51,7 @@ export class ActivityService {
 
     if (!recipients.length) return;
 
-    // 2️⃣ Log activities in DB (in parallel)
+    // 2️⃣ Persist activity entries (DB is source of truth)
     await Promise.all(
       recipients.map((userId) =>
         this.prisma.activity.create({
@@ -62,40 +67,49 @@ export class ActivityService {
       ),
     );
 
-    // 3️⃣ Send push notifications via Firebase
+    // 3️⃣ Send push notifications
     try {
-      // Fetch FCM tokens for recipients
-      const users = await this.prisma.user.findMany({
-        where: { id: { in: recipients } },
-        select: { fcmToken: true }, // assuming you store FCM tokens in user table
-      });
-
-      const tokens = users
-        .map((u) => u.fcmToken)
-        .filter((t): t is string => !!t); // remove null/undefined
+      const tokens =
+        await this.deviceTokenService.getTokensForUsers(recipients);
 
       if (!tokens.length) return;
 
       await this.firebaseService.sendPushNotification(
         tokens,
-        'New Activity',
+        'New activity in your group',
         params.title,
-        params.metadata as Record<string, string> | undefined,
+        {
+          type: params.type,
+          groupId: params.groupId,
+          actorId: params.actorId,
+          title: params.title,
+          url: `/groups/${params.groupId}/activity`,
+        },
       );
 
       this.logger.log(
-        `Push notification sent to ${tokens.length} users for group ${params.groupId}`,
+        `FCM sent | group=${params.groupId} | recipients=${recipients.length} | tokens=${tokens.length}`,
       );
-    } catch (err) {
-      this.logger.error('Failed to send push notification', err);
+    } catch (error) {
+      this.logger.error(
+        `Failed to send FCM for group ${params.groupId}`,
+        error instanceof Error ? error.stack : undefined,
+      );
     }
   }
 
+  // ---------------- Helpers ----------------
   private async getActiveGroupMemberIds(groupId: string): Promise<string[]> {
     const members = await this.prisma.groupMember.findMany({
-      where: { groupId, leftAt: null },
-      select: { userId: true },
+      where: {
+        groupId,
+        leftAt: null,
+      },
+      select: {
+        userId: true,
+      },
     });
+
     return members.map((m) => m.userId);
   }
 }

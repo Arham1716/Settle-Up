@@ -16,14 +16,20 @@ firebase.initializeApp({
 const messaging = firebase.messaging();
 
 // Optional: Handle background messages
-messaging.onBackgroundMessage(function(payload) {
-  console.log('[firebase-messaging-sw.js] Received background message ', payload);
+messaging.onBackgroundMessage(payload => {
+  console.log('[SW] Background message received:', payload);
 
-  const notificationTitle = payload.notification.title;
-  const notificationOptions = {
-    body: payload.notification.body,
-    icon: '/icon.png', // optional
-  };
+  const title = payload.notification?.title || payload.data?.title || 'FCM Notification';
+  const body = payload.notification?.body || payload.data?.body || 'You have a new activity';
+  const icon = '/logo.png';
 
-  self.registration.showNotification(notificationTitle, notificationOptions);
+  self.registration.showNotification(title, { body, icon, data: payload.data });
+});
+
+self.addEventListener("notificationclick", event => {
+  event.notification.close();
+
+  const url = event.notification.data?.url || "/";
+
+  event.waitUntil(clients.openWindow(url));
 });

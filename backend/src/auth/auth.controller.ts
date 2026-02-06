@@ -8,6 +8,7 @@ import {
   UseGuards,
   BadRequestException,
 } from '@nestjs/common';
+import { DeviceTokenService } from 'src/device-token/device-token.service';
 import { AuthService } from './auth.service';
 import { SignupDto } from './dto/signup.dto';
 import type { AuthenticatedRequest } from './types/auth-request';
@@ -16,7 +17,11 @@ import type { Response } from 'express';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  // Inject services via constructor
+  constructor(
+    private readonly authService: AuthService,
+    private readonly deviceTokenService: DeviceTokenService,
+  ) {}
 
   @Post('signup')
   signup(@Body() body: SignupDto) {
@@ -62,6 +67,18 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Get('me')
   me(@Req() req: AuthenticatedRequest) {
-    return req.user; // user should be added by JwtAuthGuard
+    return req.user;
+  }
+
+  // ✅ Save FCM device token
+  @UseGuards(JwtAuthGuard)
+  @Post('device-token')
+  async saveToken(
+    @Req() req: AuthenticatedRequest,
+    @Body() body: { token: string; platform: string },
+  ) {
+    const userId = req.user.id;
+    await this.deviceTokenService.saveToken(userId, body.token, body.platform);
+    return { success: true };
   }
 }
