@@ -3,6 +3,7 @@ model User {
   name      String?
   email     String   @unique
   password  String
+  fcmToken  String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -157,6 +158,7 @@ model Activity {
   metadata Json? // expandable details (later)
 
   createdAt DateTime @default(now())
+  seenAt    DateTime?
 
   actor User   @relation("ActivityActor", fields: [actorId], references: [id])
   user  User   @relation("ActivityRecipient", fields: [userId], references: [id])
@@ -179,6 +181,15 @@ enum ActivityType {
   EXPENSE_UPDATED
   EXPENSE_DELETED
   ADMIN_TRANSFERRED
+}
+
+model DeviceToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  platform  String   // "web", "android", "ios"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 generator client {

@@ -7,9 +7,11 @@ import { UserModule } from '../user/user.module';
 import { JwtStrategy } from './jwt.strategy';
 import { UserService } from '../user/user.service';
 import { MailService } from 'src/mail/mail.service';
+import { DeviceTokenModule } from 'src/device-token/device-token.module';
 
 @Module({
   imports: [
+    DeviceTokenModule,
     UserModule,
     PassportModule,
     JwtModule.register({

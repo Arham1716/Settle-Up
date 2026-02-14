@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import {
   Users,
   List,
@@ -26,6 +26,27 @@ export function DashboardSidebar() {
   const pathname = usePathname()
   const router = useRouter()
   const [user, setUser] = useState<{ name?: string; email: string } | null>(null)
+  const [unseenCount, setUnseenCount] = useState<number>(0)
+
+  const fetchUnseenCount = useCallback(async () => {
+    try {
+      const apiUrl =
+        process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"
+
+      const res = await fetch(`${apiUrl}/activity/unseen-count`, {
+        credentials: "include",
+      })
+
+      if (!res.ok) {
+        return
+      }
+
+      const data = await res.json()
+      setUnseenCount(data.count ?? 0)
+    } catch (err) {
+      console.error("Failed to fetch unseen activity count", err)
+    }
+  }, [])
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -52,6 +73,21 @@ export function DashboardSidebar() {
 
     fetchUser()
   }, [])
+
+  // Refetch unseen count on pathname change and when activity page marks all as seen
+  useEffect(() => {
+    fetchUnseenCount()
+    if (pathname === "/dashboard/activity") {
+      const t = setTimeout(fetchUnseenCount, 800)
+      return () => clearTimeout(t)
+    }
+  }, [pathname, fetchUnseenCount])
+
+  useEffect(() => {
+    const onMarkedSeen = () => fetchUnseenCount()
+    window.addEventListener("activity-marked-seen", onMarkedSeen)
+    return () => window.removeEventListener("activity-marked-seen", onMarkedSeen)
+  }, [fetchUnseenCount])
 
   const handleLogout = async () => {
     try {
@@ -97,7 +133,17 @@ export function DashboardSidebar() {
               `}
             >
               <item.icon className="h-4 w-4" />
-              {item.label}
+              <span className="flex items-center gap-2">
+                {item.label}
+                {item.href === "/dashboard/activity" && unseenCount > 0 && (
+                  <span
+                    className="ml-1 inline-flex h-5 min-w-[1.25rem] flex-shrink-0 items-center justify-center rounded-full bg-green-500 px-1 text-[10px] font-semibold text-white"
+                    aria-label={`${unseenCount} unread notifications`}
+                  >
+                    {unseenCount}
+                  </span>
+                )}
+              </span>
             </Link>
           )
         })}

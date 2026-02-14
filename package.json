@@ -21,6 +21,7 @@
     "concurrently": "^9.2.1"
   },
   "dependencies": {
+    "firebase": "^12.8.0",
     "nodemailer": "^7.0.12"
   }
 }

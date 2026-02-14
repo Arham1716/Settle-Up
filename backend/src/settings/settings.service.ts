@@ -17,6 +17,7 @@ import {
   BugReportDto,
 } from './dto/support-message.dto';
 import { MailService } from '../mail/mail.service';
+import { ActivityType } from '@prisma/client';
 
 @Injectable()
 export class SettingsService {
@@ -179,6 +180,96 @@ export class SettingsService {
     };
     this.notificationSettingsCache.set(userId, updated);
     return updated;
+  }
+
+  async shouldSendActivityNotification(
+    userId: string,
+    type: ActivityType,
+  ): Promise<boolean> {
+    const settings = await this.getNotificationSettings(userId);
+
+    if (settings.doNotDisturbAlways) {
+      return false;
+    }
+
+    if (
+      settings.doNotDisturbFrom &&
+      settings.doNotDisturbTo &&
+      this.isWithinDoNotDisturb(settings.doNotDisturbFrom, settings.doNotDisturbTo)
+    ) {
+      return false;
+    }
+
+    const key = this.getSettingKeyForActivity(type);
+    if (!key) {
+      return true;
+    }
+
+    if (settings[key] === false) {
+      return false;
+    }
+
+    return true;
+  }
+
+  private getSettingKeyForActivity(
+    type: ActivityType,
+  ):
+    | 'groupEvents'
+    | 'expenseEvents'
+    | 'inviteEvents'
+    | 'paymentDueEvents'
+    | null {
+    if (
+      type === ActivityType.GROUP_CREATED ||
+      type === ActivityType.GROUP_JOINED ||
+      type === ActivityType.GROUP_DELETED ||
+      type === ActivityType.MEMBER_ADDED ||
+      type === ActivityType.MEMBER_REMOVED ||
+      type === ActivityType.MEMBER_LEFT ||
+      type === ActivityType.ADMIN_TRANSFERRED
+    ) {
+      return 'groupEvents';
+    }
+
+    if (
+      type === ActivityType.EXPENSE_ADDED ||
+      type === ActivityType.EXPENSE_UPDATED ||
+      type === ActivityType.EXPENSE_DELETED
+    ) {
+      return 'expenseEvents';
+    }
+
+    if (type === ActivityType.MEMBER_INVITED) {
+      return 'inviteEvents';
+    }
+
+    return null;
+  }
+
+  private isWithinDoNotDisturb(from: string, to: string): boolean {
+    const now = new Date();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+    const [fromH, fromM] = from.split(':').map((v) => parseInt(v, 10));
+    const [toH, toM] = to.split(':').map((v) => parseInt(v, 10));
+
+    if (Number.isNaN(fromH) || Number.isNaN(fromM) || Number.isNaN(toH) || Number.isNaN(toM)) {
+      return false;
+    }
+
+    const fromMinutes = fromH * 60 + fromM;
+    const toMinutes = toH * 60 + toM;
+
+    if (fromMinutes === toMinutes) {
+      return false;
+    }
+
+    if (fromMinutes < toMinutes) {
+      return currentMinutes >= fromMinutes && currentMinutes < toMinutes;
+    }
+
+    return currentMinutes >= fromMinutes || currentMinutes < toMinutes;
   }
 
   // ---------------- Group Settings ----------------

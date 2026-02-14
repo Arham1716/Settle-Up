@@ -27,6 +27,7 @@ export default function ActivityPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [markingSeen, setMarkingSeen] = useState(false);
 
   useEffect(() => {
     const fetchActivity = async () => {
@@ -58,6 +59,33 @@ export default function ActivityPage() {
   const toggleExpand = (id: string) => {
     setExpandedId((prev) => (prev === id ? null : id));
   };
+
+  useEffect(() => {
+    const markAllSeen = async () => {
+      try {
+        setMarkingSeen(true);
+
+        const apiUrl =
+          process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+
+        await fetch(`${apiUrl}/activity/mark-all-seen`, {
+          method: "POST",
+          credentials: "include",
+        });
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("activity-marked-seen"));
+        }
+      } catch (err) {
+        console.error("Failed to mark activity as seen", err);
+      } finally {
+        setMarkingSeen(false);
+      }
+    };
+
+    if (!loading && !error && activities.length > 0) {
+      markAllSeen();
+    }
+  }, [loading, error, activities]);
 
   return (
     <>
