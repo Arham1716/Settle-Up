@@ -16,4 +16,3 @@ export class ScheduledTasksService {
   //   // Implementation requires deletedAt field
   // }
 }
-

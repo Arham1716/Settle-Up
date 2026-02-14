@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ActivityType, Prisma } from '@prisma/client';
 import { FirebaseService } from '../firebase/firebase.service';
 import { DeviceTokenService } from '../device-token/device-token.service';
+import { SettingsService } from '../settings/settings.service';
 
 @Injectable()
 export class ActivityService {
@@ -12,6 +13,7 @@ export class ActivityService {
     private readonly prisma: PrismaService,
     private readonly firebaseService: FirebaseService,
     private readonly deviceTokenService: DeviceTokenService,
+    private readonly settingsService: SettingsService,
   ) {}
 
   // ---------------- Get User Activity ----------------
@@ -25,6 +27,31 @@ export class ActivityService {
         group: { select: { id: true, name: true } },
       },
     });
+  }
+
+   async getUnseenCount(userId: string) {
+    const count = await this.prisma.activity.count({
+      where: {
+        userId,
+        seenAt: null,
+      },
+    });
+
+    return { count };
+  }
+
+  async markAllSeen(userId: string) {
+    await this.prisma.activity.updateMany({
+      where: {
+        userId,
+        seenAt: null,
+      },
+      data: {
+        seenAt: new Date(),
+      },
+    });
+
+    return { success: true };
   }
 
   // ---------------- Log Group Activity + Push ----------------
@@ -49,9 +76,19 @@ export class ActivityService {
         : memberIds;
     }
 
-    if (!recipients.length) return;
+    this.logger.log(
+      `logGroupActivity | group=${params.groupId} | type=${params.type} | actor=${params.actorId} | recipients=${recipients.join(
+        ',',
+      )}`,
+    );
 
-    // 2️⃣ Persist activity entries (DB is source of truth)
+    if (!recipients.length) {
+      this.logger.log(
+        `logGroupActivity | group=${params.groupId} | type=${params.type} | no recipients, skipping`,
+      );
+      return;
+    }
+
     await Promise.all(
       recipients.map((userId) =>
         this.prisma.activity.create({
@@ -67,28 +104,71 @@ export class ActivityService {
       ),
     );
 
-    // 3️⃣ Send push notifications
     try {
-      const tokens =
-        await this.deviceTokenService.getTokensForUsers(recipients);
+      const recipientChecks = await Promise.all(
+        recipients.map(async (userId) => {
+          const shouldSend =
+            await this.settingsService.shouldSendActivityNotification(
+              userId,
+              params.type,
+            );
+          return { userId, shouldSend };
+        }),
+      );
 
-      if (!tokens.length) return;
+      const pushRecipients = recipientChecks
+        .filter((r) => r.shouldSend)
+        .map((r) => r.userId);
+
+      if (!pushRecipients.length) {
+        this.logger.log(
+          `logGroupActivity | group=${params.groupId} | type=${params.type} | no recipients after notification settings`,
+        );
+        return;
+      }
+
+      const [actor, group] = await this.prisma.$transaction([
+        this.prisma.user.findUnique({
+          where: { id: params.actorId },
+          select: { id: true, name: true, email: true },
+        }),
+        this.prisma.group.findUnique({
+          where: { id: params.groupId },
+          select: { id: true, name: true },
+        }),
+      ]);
+
+      const tokens =
+        await this.deviceTokenService.getTokensForUsers(pushRecipients);
+
+      if (!tokens.length) {
+        this.logger.warn(
+          `logGroupActivity | group=${params.groupId} | no FCM tokens for recipients=${recipients.join(
+            ',',
+          )}`,
+        );
+        return;
+      }
 
       await this.firebaseService.sendPushNotification(
         tokens,
-        'New activity in your group',
+        group?.name
+          ? `New activity in ${group.name}`
+          : 'New activity in your group',
         params.title,
         {
           type: params.type,
           groupId: params.groupId,
           actorId: params.actorId,
+          actorName: actor?.name || actor?.email || '',
+          groupName: group?.name || '',
           title: params.title,
-          url: `/groups/${params.groupId}/activity`,
+          url: `/dashboard/groups/group/${params.groupId}`,
         },
       );
 
       this.logger.log(
-        `FCM sent | group=${params.groupId} | recipients=${recipients.length} | tokens=${tokens.length}`,
+        `FCM sent | group=${params.groupId} | recipients=${pushRecipients.length} | tokens=${tokens.length}`,
       );
     } catch (error) {
       this.logger.error(

@@ -15,12 +15,12 @@ firebase.initializeApp({
 // Retrieve Firebase Messaging object
 const messaging = firebase.messaging();
 
-// Optional: Handle background messages
+// Handle background messages (data-only)
 messaging.onBackgroundMessage(payload => {
   console.log('[SW] Background message received:', payload);
 
-  const title = payload.notification?.title || payload.data?.title || 'FCM Notification';
-  const body = payload.notification?.body || payload.data?.body || 'You have a new activity';
+  const title = payload.data?.title || 'FCM Notification';
+  const body = payload.data?.body || 'You have a new activity';
   const icon = '/logo.png';
 
   self.registration.showNotification(title, { body, icon, data: payload.data });

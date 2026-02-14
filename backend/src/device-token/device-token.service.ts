@@ -20,6 +20,12 @@ export class DeviceTokenService {
   ): Promise<DeviceToken | void> {
     if (!token || !userId) return;
 
+    this.logger.log(
+      `Saving FCM token | user=${userId} | platform=${platform} | suffix=${token.slice(
+        -8,
+      )}`,
+    );
+
     return this.prisma.deviceToken.upsert({
       where: { token },
       update: {
@@ -51,8 +57,13 @@ export class DeviceTokenService {
       },
     });
 
-    // Ensure uniqueness (important for safety)
-    return Array.from(new Set(records.map((r) => r.token)));
+    const tokens = Array.from(new Set(records.map((r) => r.token)));
+
+    this.logger.log(
+      `Loaded ${tokens.length} FCM token(s) for ${userIds.length} user(s)`,
+    );
+
+    return tokens;
   }
 
   /**

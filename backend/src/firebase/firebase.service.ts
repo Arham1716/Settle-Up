@@ -31,43 +31,37 @@ export class FirebaseService {
     data?: Record<string, string>,
   ): Promise<void> {
     if (!tokens.length) {
-      this.logger.warn("No FCM tokens to send.");
+      this.logger.warn('No FCM tokens to send.');
       return;
     }
 
-    const message: admin.messaging.MulticastMessage = {
-      tokens,
-      notification: { title, body },
-      data,
-      webpush: { fcmOptions: { link: data?.url } },
-    };
-
     try {
-      const response = await admin.messaging().sendEachForMulticast(message);
+      const uniqueTokens = Array.from(
+        new Set(tokens.map((t) => t?.trim()).filter((t): t is string => !!t)),
+      );
 
-      this.logger.log(`FCM request sent to ${tokens.length} tokens.`);
+      if (!uniqueTokens.length) {
+        this.logger.warn('All provided FCM tokens were empty/invalid.');
+        return;
+      }
 
-      response.responses.forEach((res, index) => {
-        if (res.success) {
-          this.logger.log(`✅ Token ${tokens[index]} sent successfully`);
-        } else {
-          const code = (res.error as { code?: string })?.code;
-          this.logger.error(
-            `❌ Failed to send to ${tokens[index]} | code=${code} | message=${res.error?.message}`
-          );
+      const chunks = this.chunk(
+        uniqueTokens,
+        FirebaseService.MAX_MULTICAST_SIZE,
+      );
 
-          // Optional: remove invalid tokens
-          if (
-            code === "messaging/registration-token-not-registered" ||
-            code === "messaging/invalid-registration-token"
-          ) {
-            this.logger.warn(`Removing invalid token ${tokens[index]}`);
-            // await this.deviceTokenService.removeToken(tokens[index])
-          }
-        }
-      });
+      this.logger.log(
+        `Sending FCM to ${uniqueTokens.length} tokens in ${chunks.length} chunk(s).`,
+      );
+
+      for (const chunkTokens of chunks) {
+        await this.sendChunk(chunkTokens, title, body, data);
+      }
     } catch (err) {
-      this.logger.error("FCM send error", err instanceof Error ? err.stack : err);
+      this.logger.error(
+        'FCM send error',
+        err instanceof Error ? err.stack : err,
+      );
     }
   }
 
@@ -81,16 +75,13 @@ export class FirebaseService {
   ) {
     const message: admin.messaging.MulticastMessage = {
       tokens,
-      notification: { title, body }, // fallback
-      data,
+      data: {
+        ...(data || {}),
+        title,
+        body,
+      },
       webpush: {
         headers: { Urgency: 'high' },
-        notification: {
-          title,
-          body,
-          icon: '/logo.png',
-          click_action: data?.url,
-        },
       },
     };
 
@@ -98,8 +89,13 @@ export class FirebaseService {
 
     const invalidTokens: string[] = [];
 
+    let successCount = 0;
+
     response.responses.forEach((res, index) => {
-      if (res.success) return;
+      if (res.success) {
+        successCount += 1;
+        return;
+      }
 
       const error = res.error as { code?: string } | undefined;
       const code = error?.code;
@@ -115,6 +111,12 @@ export class FirebaseService {
         );
       }
     });
+
+    const failureCount = tokens.length - successCount;
+
+    this.logger.log(
+      `FCM chunk result | tokens=${tokens.length} | success=${successCount} | failure=${failureCount}`,
+    );
 
     if (invalidTokens.length) {
       await this.deviceTokenService.removeTokens(invalidTokens);
