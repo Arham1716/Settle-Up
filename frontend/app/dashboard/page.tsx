@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { GlossyCardButton } from "@/components/ui/glossy-card-button";
+import { PageTitleCard } from "@/components/ui/page-title-card";
 
 type DashboardData = {
   totalGroups: number;
@@ -19,8 +20,9 @@ export default function DashboardPage() {
   useEffect(() => {
     const fetchDashboard = async () => {
       try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
         const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/dashboard`,
+          `${apiUrl}/dashboard`,
           {
             credentials: "include", // use if auth via cookies
             headers: {
@@ -68,7 +70,7 @@ export default function DashboardPage() {
 
       {/* Content */}
       <div className="relative z-10 flex flex-col gap-4 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
-        <h1 className="text-2xl font-bold text-white">Dashboard</h1>
+        <PageTitleCard title="Dashboard" className="mb-2" />
 
         <p className="text-white/60">
           Welcome back. Select an option from the sidebar to get started.

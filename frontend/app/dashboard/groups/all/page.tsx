@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { GlossyCardButton } from "@/components/ui/glossy-card-button";
+import { PageTitleCard } from "@/components/ui/page-title-card";
 
 type Group = {
   id: string;
@@ -56,7 +57,7 @@ export default function AllGroupsPage() {
   return (
     <section className="relative min-h-screen overflow-hidden pt-16">
       <div className="relative z-10 space-y-6 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
-        <h1 className="text-2xl font-semibold text-white">Your Groups</h1>
+        <PageTitleCard title="Your Groups" className="mb-6" />
 
         {groups.length === 0 && (
           <p className="text-white/60">

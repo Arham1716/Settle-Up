@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { GlossyCardButton } from "@/components/ui/glossy-card-button";
 import { ActivityIcon } from "@/components/ui/icons";
+import { PageTitleCard } from "@/components/ui/page-title-card";
 
 type Activity = {
   id: string;
@@ -94,7 +95,7 @@ export default function ActivityPage() {
         
         {/* Content */}
         <div className="relative z-10 space-y-6 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto pb-8">
-          <h1 className="text-2xl font-semibold text-white">Activity Feed</h1>
+          <PageTitleCard title="Activity Feed" className="mb-6" />
 
           {loading && (
             <div className="text-white/60">Loading activity...</div>

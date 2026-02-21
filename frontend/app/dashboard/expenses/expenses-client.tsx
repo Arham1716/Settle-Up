@@ -4,7 +4,7 @@ import { use } from 'react';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { GlossyButton } from '@/components/ui/glossy-button';
-import { SectionHeader } from '@/components/ui/section-header';
+import { PageTitleCard } from '@/components/ui/page-title-card';
 import { Plus, Trash2, Edit } from 'lucide-react';
 
 type Expense = {
@@ -53,6 +53,7 @@ export default function ExpensesClient({
   const [amount, setAmount] = useState('');
   const [currency, setCurrency] = useState('USD');
   const [paidById, setPaidById] = useState('');
+  const [category, setCategory] = useState('');
 
   const popularCurrencies = [
     'USD','EUR','GBP','JPY','AUD',
@@ -129,6 +130,7 @@ export default function ExpensesClient({
             amount: parseFloat(amount),
             currency: currency.trim().toUpperCase(),
             paidById,
+            category: category.trim() || undefined,
           }),
         }
       );
@@ -152,6 +154,7 @@ export default function ExpensesClient({
     setAmount(expense.amount.toString());
     setCurrency(expense.currency || 'USD');
     setPaidById(expense.paidBy.id);
+    setCategory((expense as any).category || '');
     setShowAddExpense(true);
     setError(null);
   };
@@ -181,6 +184,7 @@ export default function ExpensesClient({
             amount: parseFloat(amount),
             currency: currency.trim().toUpperCase(),
             paidById,
+            category: category.trim() || undefined,
           }),
         }
       );
@@ -224,6 +228,7 @@ export default function ExpensesClient({
     setAmount('');
     setCurrency('USD');
     setPaidById('');
+    setCategory('');
     setError(null);
   };
 
@@ -259,10 +264,9 @@ export default function ExpensesClient({
     return (
       <section className="relative min-h-screen overflow-hidden pt-16">
         <div className="relative z-10 px-4 max-w-4xl mx-auto">
-          <SectionHeader className="mb-6 text-center">
-            <h1>Expenses</h1>
-            <p>Select a group to manage expenses</p>
-          </SectionHeader>
+          <PageTitleCard title="Expenses" className="mb-6">
+            <p className="text-sm text-white/70 mt-1">Select a group to manage expenses</p>
+          </PageTitleCard>
 
           {allGroups.length === 0 ? (
             <p className="text-white/60 text-center">
@@ -305,10 +309,9 @@ export default function ExpensesClient({
     <section className="relative min-h-screen overflow-hidden pt-6">
       <main className="relative z-10 flex-1 overflow-hidden">
         <section className="pt-16 px-4 max-w-4xl mx-auto">
-          <SectionHeader className="mb-6 text-center">
-            <h1>{group?.name || 'Expenses'}</h1>
-            <p>Manage expenses for this group</p>
-          </SectionHeader>
+          <PageTitleCard title={group?.name || "Expenses"} className="mb-6">
+            <p className="text-sm text-white/70 mt-1">Manage expenses for this group</p>
+          </PageTitleCard>
 
           {/* LIST */}
           <div className="space-y-3 mb-6">
@@ -468,6 +471,19 @@ export default function ExpensesClient({
                     </option>
                   ))}
                 </select>
+              </div>
+
+              <div>
+                <label className="block text-sm text-white/80 mb-1">
+                  Category (optional)
+                </label>
+                <input
+                  type="text"
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className="w-full rounded-md bg-black/40 px-3 py-2 text-white outline-none"
+                  placeholder="Food, Transport, Bills, etc."
+                />
               </div>
 
               <div className="flex gap-2 mt-4">

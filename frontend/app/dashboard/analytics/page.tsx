@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { SectionHeader } from "@/components/ui/section-header";
 import { GlossyButton } from "@/components/ui/glossy-button";
+import { PageTitleCard } from "@/components/ui/page-title-card";
 import {
   LineChart,
   Line,
@@ -153,10 +153,9 @@ export default function AnalyticsPage() {
     <section className="relative min-h-screen overflow-hidden pt-6">
       <main className="relative z-10 flex-1 overflow-hidden">
         <section className="pt-16 px-4 max-w-7xl mx-auto pb-12">
-          <SectionHeader className="mb-6 text-center">
-            <h1>Analytics</h1>
-            <p>Track your expenses and payments</p>
-          </SectionHeader>
+          <PageTitleCard title="Analytics" className="mb-6">
+            <p className="text-sm text-white/70 mt-1">Track your expenses and payments</p>
+          </PageTitleCard>
 
           {/* Timeline Selection */}
           <div className="mb-8 flex flex-wrap gap-2 justify-center">

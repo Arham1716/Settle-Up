@@ -1,6 +1,6 @@
-import { IsString, IsNotEmpty, IsNumber, IsPositive, MaxLength, IsOptional } from 'class-validator';
+import { IsString, IsNotEmpty, IsNumber, IsPositive, IsOptional, MaxLength } from 'class-validator';
 
-export class CreateExpenseDto {
+export class CreatePersonalExpenseDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(200)
@@ -13,14 +13,9 @@ export class CreateExpenseDto {
   @IsString()
   @IsOptional()
   @MaxLength(3)
-  currency?: string; // Currency code (e.g., USD, EUR, GBP)
-
-  @IsString()
-  @IsNotEmpty()
-  paidById: string; // User ID who paid
+  currency?: string;
 
   @IsString()
   @IsOptional()
   category?: string; // Category name (Food, Transport, Bills, etc.)
 }
-

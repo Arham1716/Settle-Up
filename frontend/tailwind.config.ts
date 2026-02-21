@@ -10,6 +10,15 @@ const config: Config = {
   darkMode: 'class',
   theme: {
     extend: {
+      keyframes: {
+        'marquee-alt': {
+          '0%': { transform: 'translateX(0)' },
+          '100%': { transform: 'translateX(-33.333%)' },
+        },
+      },
+      animation: {
+        'marquee-alt': 'marquee-alt 18s ease-in-out infinite alternate',
+      },
       colors: {
         'background': 'var(--background)',
         'foreground': 'var(--foreground)',

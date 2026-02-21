@@ -3,6 +3,8 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ActivityType } from '@prisma/client';
@@ -10,12 +12,15 @@ import { ActivityService } from '../activity/activity.service';
 import { CreateExpenseDto } from './dto/create-expense.dto';
 import { UpdateExpenseDto } from './dto/update-expense.dto';
 import { SplitBalanceDto, SplitType } from './dto/split-balance.dto';
+import { BudgetService } from '../budget/budget.service';
 
 @Injectable()
 export class ExpensesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly activityService: ActivityService,
+    @Inject(forwardRef(() => BudgetService))
+    private readonly budgetService: BudgetService,
   ) {}
 
   // ---------------- Create Expense ----------------
@@ -51,6 +56,8 @@ export class ExpensesService {
         currency: dto.currency || 'USD',
         paidById: dto.paidById,
         groupId,
+        type: 'GROUP',
+        category: dto.category || null,
       },
       include: {
         paidBy: {
@@ -83,6 +90,30 @@ export class ExpensesService {
       },
       excludeActor: false,
     });
+
+    // Track expense against budgets for all group members
+    try {
+      const groupMembers = await this.prisma.groupMember.findMany({
+        where: {
+          groupId,
+          leftAt: null,
+        },
+        select: { userId: true },
+      });
+
+      // Track expense for each member's budget
+      for (const member of groupMembers) {
+        await this.budgetService.trackExpense(
+          member.userId,
+          dto.amount,
+          dto.category,
+          new Date(),
+        );
+      }
+    } catch (error) {
+      // Don't fail expense creation if budget tracking fails
+      console.error('Failed to track expense against budgets:', error);
+    }
 
     // Convert Decimal to number for frontend
     return {
@@ -153,10 +184,12 @@ export class ExpensesService {
       throw new NotFoundException('Expense not found');
     }
 
-    // Verify user is a member of the group
+    if (!expense.groupId) {
+      throw new BadRequestException('Expense is not linked to a group');
+      }
     const membership = await this.prisma.groupMember.findUnique({
       where: {
-        userId_groupId: { userId, groupId: expense.groupId },
+        userId_groupId: { userId, groupId: expense.groupId! },
       },
     });
 
@@ -295,8 +328,10 @@ export class ExpensesService {
       throw new NotFoundException('Expense not found');
     }
 
-    // Only admin or the person who paid can delete
-    const isAdmin = expense.group.members.length > 0;
+    if (!expense.group) {
+      throw new BadRequestException('Expense has no associated group');
+    }
+    const isAdmin = expense.group?.members.length ? expense.group.members.length > 0 : false;
     const isPaidBy = expense.paidById === userId;
 
     if (!isAdmin && !isPaidBy) {
@@ -305,10 +340,12 @@ export class ExpensesService {
       );
     }
 
-    //log activity
+    if (!expense.groupId) {
+      throw new BadRequestException('Expense not linked to group');
+    }
     await this.activityService.logGroupActivity({
       actorId: userId,
-      groupId: expense.groupId,
+      groupId: expense.groupId!,
       type: ActivityType.EXPENSE_DELETED,
       title: `Expense deleted`,
       metadata: {
@@ -732,7 +769,7 @@ export class ExpensesService {
     // Group by category/group for pie chart
     const groupData = new Map<string, number>();
     expenses.forEach((expense) => {
-      const groupName = expense.group.name;
+      const groupName = expense.group?.name || 'Unknown';
       const current = groupData.get(groupName) || 0;
       groupData.set(groupName, current + Number(expense.amount));
     });

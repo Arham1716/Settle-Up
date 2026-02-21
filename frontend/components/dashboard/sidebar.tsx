@@ -10,6 +10,7 @@ import {
   BarChart3,
   Settings,
   LayoutDashboard,
+  Wallet,
 } from "lucide-react"
 import { GlossyButton } from "@/components/ui/glossy-button"
 
@@ -18,6 +19,7 @@ const navItems = [
   { label: "Groups", href: "/dashboard/groups", icon: Users },
   { label: "Activity Feed", href: "/dashboard/activity", icon: List },
   { label: "Expenses", href: "/dashboard/expenses", icon: Receipt },
+  { label: "Budget", href: "/dashboard/budget", icon: Wallet },
   { label: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },
   { label: "Settings", href: "/dashboard/settings", icon: Settings },
 ]
