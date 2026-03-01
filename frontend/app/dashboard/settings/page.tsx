@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { GlossyButton } from "@/components/ui/glossy-button";
-import { SectionHeader } from "@/components/ui/section-header";
+import { PageTitleCard } from "@/components/ui/page-title-card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Settings, User, Globe, Users, Bell, CreditCard, HelpCircle, Trash2 } from "lucide-react";
 
@@ -335,10 +335,9 @@ export default function SettingsPage() {
     <section className="relative min-h-screen overflow-hidden pt-16">
 
       <div className="relative z-10 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
-        <SectionHeader className="mb-6">
-          <h1>Settings</h1>
-          <p>Manage your account and preferences</p>
-        </SectionHeader>
+        <PageTitleCard title="Settings" className="mb-6">
+          <p className="text-sm text-white/70 mt-1">Manage your account and preferences</p>
+        </PageTitleCard>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-6 gap-2 mb-6">

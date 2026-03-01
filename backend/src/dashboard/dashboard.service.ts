@@ -1,10 +1,15 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Inject, forwardRef } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { Decimal } from "@prisma/client/runtime/library";
+import { BudgetService } from "../budget/budget.service";
 
 @Injectable()
 export class DashboardService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => BudgetService))
+    private readonly budgetService: BudgetService,
+  ) {}
 
   async getDashboardData(userId: string) {
     // 1️⃣ Total groups user belongs to
@@ -47,10 +52,14 @@ export class DashboardService {
       },
     });
 
+    // 4️⃣ Budget summary
+    const budgetSummary = await this.budgetService.getBudgetSummary(userId);
+
     return {
       totalGroups,
       outstandingBalance,
       recentActivity,
+      budgetSummary,
     };
   }
 }

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
+import { PageTitleCard } from "@/components/ui/page-title-card";
 
 export default function CreateGroupPage() {
   const router = useRouter();
@@ -51,11 +52,9 @@ export default function CreateGroupPage() {
 
   return (
     <section className="relative min-h-screen overflow-hidden pt-16">
-      <div className="relative z-10 flex justify-center px-4 sm:px-6 lg:px-8">
+      <div className="relative z-10 flex justify-center px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
         <div className="w-full max-w-md space-y-6">
-          <h1 className="text-2xl font-semibold text-white">
-            Create Group
-          </h1>
+          <PageTitleCard title="Create Group" className="mb-6" />
 
           {error && (
             <p className="text-sm text-destructive">{error}</p>

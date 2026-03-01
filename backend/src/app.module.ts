@@ -13,6 +13,7 @@ import { ActivityModule } from './activity/activity.module';
 import { SettingsModule } from './settings/settings.module';
 import { DeviceTokenModule } from './device-token/device-token.module';
 import { FirebaseModule } from './firebase/firebase.module';
+import { BudgetModule } from './budget/budget.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { FirebaseModule } from './firebase/firebase.module';
     SettingsModule,
     DeviceTokenModule,
     FirebaseModule,
+    BudgetModule,
   ],
   controllers: [AppController],
   providers: [AppService],
